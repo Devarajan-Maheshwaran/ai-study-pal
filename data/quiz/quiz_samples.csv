@@ -1,3 +1,4 @@
+Question,Answer,Topic,Difficulty
 "What is a variable in Python?","A named reference to a value stored in memory.","Python basics","easy"
 "What does the len() function do in Python?","It returns the length of an object, like a list or string.","Python basics","easy"
 "What is a list in Python?","An ordered, mutable collection of items.","Python basics","easy"
