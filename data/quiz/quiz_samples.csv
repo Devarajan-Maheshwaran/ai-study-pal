@@ -1,9 +1,0 @@
-Question,Answer,Topic,Difficulty
-"What is a variable in Python?","A named reference to a value stored in memory.","Python basics","easy"
-"What does the len() function do in Python?","It returns the length of an object, like a list or string.","Python basics","easy"
-"What is a list in Python?","An ordered, mutable collection of items.","Python basics","easy"
-"What is machine learning?","A field of AI where models learn patterns from data to make predictions or decisions.","Machine Learning basics","easy"
-"What is the difference between supervised and unsupervised learning?","Supervised uses labeled data; unsupervised finds patterns in unlabeled data.","Machine Learning basics","medium"
-"What is overfitting in a machine learning model?","When a model fits training data too closely and performs poorly on new data.","Machine Learning basics","medium"
-"What is a neuron in a neural network?","A basic computational unit that receives inputs, applies weights and activation, and outputs a value.","Deep Learning basics","medium"
-"What is an activation function in neural networks?","A function that introduces non-linearity, deciding if a neuron should be activated.","Deep Learning basics","medium"
