@@ -29,6 +29,9 @@ API Endpoints:
 - GET  /api/available-topics      - Get all quiz topics
 - GET  /api/available-subjects    - Get all study plan subjects
 - POST /api/study-plan-csv        - Download study plan as CSV
+- POST /api/generate-mcqs         - Generate MCQs from text
+- POST /api/log-quiz-result       - Log quiz result for user
+- GET  /api/generate-learning-path - Generate personalized learning path
 """
 
 import os
@@ -43,6 +46,8 @@ from services import (
     nlp_service,
     feedback_service,
     study_plan_service,
+    mcq_generator,
+    learning_path,
 )
 
 # Initialize Flask app
@@ -82,7 +87,13 @@ def initialize_services():
         
         study_plan_service.init_study_plan_service(MODELS_DIR)
         print("  ✓ Study plan service initialized")
-        
+
+        # mcq_generator loads models at import time
+        print("  ✓ MCQ generator service initialized")
+
+        # learning_path does not require initialization
+        print("  ✓ Learning path service initialized")
+
         print("[STARTUP] All AI services ready!")
         return True
     except Exception as e:
@@ -564,6 +575,135 @@ def study_plan_csv():
             download_name="study_plan.csv"
         )
     
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================================
+# ROUTES: MCQ Generator API
+# ============================================================================
+
+@app.route("/api/generate-mcqs", methods=["POST"])
+def generate_mcqs():
+    """
+    Generate multiple-choice questions from text.
+
+    Request JSON:
+    {
+        "text": "Text to generate MCQs from...",
+        "topic": "optional topic",
+        "max_questions": 5
+    }
+
+    Response:
+    {
+        "mcqs": [
+            {
+                "id": "uuid",
+                "question": "What is ____?",
+                "options": ["A", "B", "C", "D"],
+                "correct_index": 2,
+                "topic": "topic",
+                "difficulty": "easy"
+            },
+            ...
+        ],
+        "count": 3
+    }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        text = data.get("text", "")
+        topic = data.get("topic")
+        max_questions = data.get("max_questions", 5)
+
+        if not text or not text.strip():
+            return jsonify({"error": "text is required"}), 400
+
+        try:
+            max_questions = int(max_questions)
+        except ValueError:
+            return jsonify({"error": "max_questions must be an integer"}), 400
+
+        if max_questions <= 0:
+            return jsonify({"error": "max_questions must be > 0"}), 400
+
+        mcqs = mcq_generator.generate_mcqs_from_text(text, topic=topic, max_questions=max_questions)
+
+        return jsonify({
+            "mcqs": mcqs,
+            "count": len(mcqs)
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================================
+# ROUTES: Learning Path API
+# ============================================================================
+
+@app.route("/api/log-quiz-result", methods=["POST"])
+def log_quiz_result():
+    """
+    Log a quiz result for a user.
+
+    Request JSON:
+    {
+        "user_id": "user123",
+        "result": {
+            "topic": "Python",
+            "difficulty": "easy",
+            "correct": true
+        }
+    }
+
+    Response:
+    {
+        "status": "logged"
+    }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        user_id = data.get("user_id", "").strip()
+        result = data.get("result", {})
+
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+
+        if not result:
+            return jsonify({"error": "result object is required"}), 400
+
+        learning_path.log_quiz_result(user_id, result)
+
+        return jsonify({"status": "logged"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/generate-learning-path", methods=["GET"])
+def generate_learning_path_endpoint():
+    """
+    Generate a personalized learning path for a user.
+
+    Query Params:
+    - user_id: string (required)
+
+    Response:
+    {
+        "user_id": "user123",
+        "topic_stats": {...},
+        "next_steps": [...]
+    }
+    """
+    try:
+        user_id = request.args.get("user_id", "").strip()
+
+        if not user_id:
+            return jsonify({"error": "user_id query parameter is required"}), 400
+
+        profile = learning_path.generate_learning_path(user_id)
+
+        return jsonify(profile)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
