@@ -255,6 +255,8 @@ def main():
         "NLP Module": test_nlp_module(),
         "Feedback Module": test_feedback_module(),
         "Study Plan Module": test_study_plan_module(),
+        "MCQ Generator Module": test_mcq_module(),
+        "Learning Path Module": test_learning_path_module(),
     }
     
     # Summary

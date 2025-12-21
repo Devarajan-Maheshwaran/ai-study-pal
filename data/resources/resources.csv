@@ -1,0 +1,11 @@
+subject,title,url,description
+data structures,GeeksforGeeks DSA Playlist,https://www.youtube.com/playlist?list=PLqM7alHXFySHaLWhNsxV4oKXz_0T5mU3S,"Intro to arrays, linked lists, stacks, queues."
+algorithms,CLRS Algorithms Notes,https://web.mit.edu/~16.070/www/lecture/big_o.pdf,"Big-O, sorting, searching, basic algorithm design."
+python,"Python Official Tutorial",https://docs.python.org/3/tutorial/,"Basics of Python syntax, control flow, functions."
+machine learning,Andrew Ng ML Course,https://www.coursera.org/learn/machine-learning,"Supervised learning, regression, classification basics."
+deep learning,DeepLearning.ai Course,https://www.coursera.org/specializations/deep-learning,"Neural networks, backpropagation, CNNs."
+nlp,NLTK Book,https://www.nltk.org/book/,"Tokenization, POS tagging, text processing."
+math,"Khan Academy – Algebra",https://www.khanacademy.org/math/algebra,"Algebra basics for CS and ML."
+probability,Probability Cheatsheet,https://static1.squarespace.com/static/54bf3e9ee4b0f0d81bf7ff36/t/5e51ff7d9f2f120d8e9501c6/1582428286182/probability_cheatsheet_140.pdf,"Core probability formulas and intuition."
+data structures,NeetCode DSA Roadmap,https://neetcode.io/roadmap,"Structured DSA practice path."
+algorithms,USACO Guide,https://usaco.guide/,"Competitive programming algorithms and problems."

@@ -15,6 +15,8 @@ from .summarizer_service import summarize_text
 from .nlp_service import extract_keywords, get_study_tips, get_resources
 from .feedback_service import generate_feedback, calculate_performance_metrics
 from .study_plan_service import generate_study_plan, study_plan_to_csv
+from .resource_suggester import suggest_resources
+
 
 __all__ = [
     "generate_quiz_for_topic",

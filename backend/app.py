@@ -32,6 +32,7 @@ API Endpoints:
 - POST /api/generate-mcqs         - Generate MCQs from text
 - POST /api/log-quiz-result       - Log quiz result for user
 - GET  /api/generate-learning-path - Generate personalized learning path
+- POST /api/suggest-resources     - Suggest learning resources by subject
 """
 
 import os
@@ -48,6 +49,7 @@ from services import (
     study_plan_service,
     mcq_generator,
     learning_path,
+    resource_suggester,
 )
 
 # Initialize Flask app
@@ -94,6 +96,9 @@ def initialize_services():
         # learning_path does not require initialization
         print("  ✓ Learning path service initialized")
 
+        # resource_suggester loads models at import time
+        print("  ✓ Resource suggester service initialized")
+
         print("[STARTUP] All AI services ready!")
         return True
     except Exception as e:
@@ -124,7 +129,10 @@ def ping():
             "summarizer": "ready",
             "nlp": "ready",
             "feedback": "ready",
-            "study_plan": "ready"
+            "study_plan": "ready",
+            "mcq_generator": "ready",
+            "learning_path": "ready",
+            "resource_suggester": "ready"
         }
     })
 
@@ -703,6 +711,63 @@ def generate_learning_path_endpoint():
         profile = learning_path.generate_learning_path(user_id)
 
         return jsonify(profile)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================================
+# ROUTES: Resource Suggester API
+# ============================================================================
+
+@app.route("/api/suggest-resources", methods=["POST"])
+def suggest_resources():
+    """
+    Suggest learning resources based on subject using K-means clustering.
+
+    Request JSON:
+    {
+        "subject": "machine learning",
+        "top_n": 5
+    }
+
+    Response:
+    {
+        "subject": "machine learning",
+        "resources": [
+            {
+                "subject": "Machine Learning",
+                "title": "Resource Title",
+                "url": "https://...",
+                "description": "Description..."
+            },
+            ...
+        ],
+        "count": 5
+    }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        subject = data.get("subject", "").strip()
+        top_n = data.get("top_n", 5)
+
+        if not subject:
+            return jsonify({"error": "subject is required"}), 400
+
+        try:
+            top_n = int(top_n)
+        except ValueError:
+            return jsonify({"error": "top_n must be an integer"}), 400
+
+        if top_n <= 0:
+            return jsonify({"error": "top_n must be > 0"}), 400
+
+        resources = resource_suggester.suggest_resources(subject, top_n=top_n)
+
+        return jsonify({
+            "subject": subject,
+            "resources": resources,
+            "count": len(resources)
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
