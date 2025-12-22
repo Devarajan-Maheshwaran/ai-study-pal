@@ -14,11 +14,11 @@ MODELS_DIR = BASE_DIR / "models"
 
 VEC_PATH = MODELS_DIR / "resource_tfidf_vectorizer.joblib"
 KMEANS_PATH = MODELS_DIR / "resource_kmeans.joblib"
-RES_TBL_PATH = RES_DIR / "resources.parquet"
+RES_TBL_PATH = RES_DIR / "resources_with_clusters.csv"
 
 vectorizer = joblib.load(VEC_PATH)
 kmeans = joblib.load(KMEANS_PATH)
-resources_df = pd.read_parquet(RES_TBL_PATH)
+resources_df = pd.read_csv(RES_TBL_PATH)
 
 
 def suggest_resources(subject: str, top_n: int = 5):
