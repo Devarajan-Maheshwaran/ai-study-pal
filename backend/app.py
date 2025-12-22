@@ -551,38 +551,47 @@ def generate_study_plan_endpoint():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/study-plan-csv", methods=["POST"])
-def study_plan_csv():
+@app.route("/api/download-schedule", methods=["GET"])
+def download_schedule():
     """
     Download study plan as CSV file.
-    
-    Request JSON:
-    {
-        "plan": { study plan object from /generate-study-plan }
-    }
-    
+
+    Query Params:
+    - subject: string (required)
+    - hours: number (required)
+
     Returns:
         CSV file download
     """
     try:
-        data = request.get_json(force=True) or {}
-        plan = data.get("plan")
-        
-        if not plan:
-            return jsonify({"error": "plan object is required"}), 400
-        
+        subject = request.args.get("subject", "").strip()
+        hours_str = request.args.get("hours", "")
+
+        if not subject:
+            return jsonify({"error": "subject query parameter is required"}), 400
+
+        if not hours_str:
+            return jsonify({"error": "hours query parameter is required"}), 400
+
+        try:
+            hours = float(hours_str)
+        except ValueError:
+            return jsonify({"error": "hours must be a number"}), 400
+
+        plan = study_plan_service.generate_study_plan(subject, hours, "medium")
+
+        if "error" in plan:
+            return jsonify(plan), 404
+
         csv_content = study_plan_service.study_plan_to_csv(plan)
-        
-        # Create file-like object
-        csv_file = io.StringIO(csv_content)
-        
+
         return send_file(
             io.BytesIO(csv_content.encode()),
             mimetype="text/csv",
             as_attachment=True,
             download_name="study_plan.csv"
         )
-    
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -687,7 +696,70 @@ def log_quiz_result():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/generate-learning-path", methods=["GET"])
+@app.route("/api/answer-mcq", methods=["POST"])
+def answer_mcq():
+    """
+    Answer a multiple-choice question and log the result.
+
+    Request JSON:
+    {
+        "userId": "user123",
+        "topic": "Python",
+        "mcq": {
+            "question": "What is 2+2?",
+            "options": ["3", "4", "5", "6"],
+            "correctIndex": 1
+        },
+        "chosenIndex": 1
+    }
+
+    Response:
+    {
+        "correct": true,
+        "message": "Correct!",
+        "correctIndex": 1
+    }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        user_id = data.get("userId", "").strip()
+        topic = data.get("topic", "").strip()
+        mcq = data.get("mcq", {})
+        chosen_index = data.get("chosenIndex")
+
+        if not user_id:
+            return jsonify({"error": "userId is required"}), 400
+
+        if not topic:
+            return jsonify({"error": "topic is required"}), 400
+
+        if not mcq or "correctIndex" not in mcq:
+            return jsonify({"error": "mcq with correctIndex is required"}), 400
+
+        if chosen_index is None:
+            return jsonify({"error": "chosenIndex is required"}), 400
+
+        correct = chosen_index == mcq["correctIndex"]
+        message = "Correct!" if correct else "Incorrect."
+
+        # Log the result
+        result = {
+            "topic": topic,
+            "difficulty": "medium",  # Default, since not provided
+            "correct": correct
+        }
+        learning_path.log_quiz_result(user_id, result)
+
+        return jsonify({
+            "correct": correct,
+            "message": message,
+            "correctIndex": mcq["correctIndex"]
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/learning-path", methods=["GET"])
 def generate_learning_path_endpoint():
     """
     Generate a personalized learning path for a user.
@@ -719,7 +791,7 @@ def generate_learning_path_endpoint():
 # ROUTES: Resource Suggester API
 # ============================================================================
 
-@app.route("/api/suggest-resources", methods=["POST"])
+@app.route("/api/resource-suggestions", methods=["POST"])
 def suggest_resources():
     """
     Suggest learning resources based on subject using K-means clustering.

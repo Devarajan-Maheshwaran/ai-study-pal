@@ -81,43 +81,62 @@ def generate_learning_path(user_id: str):
         elif s["accuracy"] > 0.8:
             strong_topics.append((topic, s))
 
-    next_steps = []
+    nextSteps = []
 
     for topic, s in weak_topics:
-        next_steps.append({
+        nextSteps.append({
             "type": "review",
             "topic": topic,
-            "resource": "summary",
-            "reason": "low_accuracy",
+            "difficulty": "easy",
+            "reason": "Score below 60%",
         })
-        next_steps.append({
+        nextSteps.append({
             "type": "quiz",
             "topic": topic,
             "difficulty": "easy",
             "count": 5,
+            "reason": "Practice to improve",
         })
 
     for topic, s in strong_topics:
-        next_steps.append({
+        nextSteps.append({
             "type": "quiz",
             "topic": topic,
             "difficulty": "hard",
-            "count": 3,
-            "reason": "mastered_medium",
+            "count": 5,
+            "reason": "Mastery high, challenge yourself",
         })
 
-    if not next_steps:
-        next_steps.append({
+    if not nextSteps:
+        nextSteps.append({
             "type": "quiz",
-            "topic": "general",
-            "difficulty": "easy",
+            "topic": "General Knowledge",
+            "difficulty": "medium",
             "count": 5,
+            "reason": "Start your journey",
+        })
+
+    # Transform topic_stats to array format
+    topicStats = []
+    for topic, s in stats.items():
+        averageScore = s["accuracy"] * 100
+        masteryLevel = 'Novice'
+        if averageScore > 80:
+            masteryLevel = 'Expert'
+        elif averageScore > 50:
+            masteryLevel = 'Intermediate'
+
+        topicStats.append({
+            "topic": topic,
+            "attempts": s["attempts"],
+            "averageScore": averageScore,
+            "masteryLevel": masteryLevel,
         })
 
     profile = {
         "user_id": user_id,
-        "topic_stats": stats,
-        "next_steps": next_steps,
+        "topicStats": topicStats,
+        "nextSteps": nextSteps,
     }
 
     with open(_user_profile_path(user_id), "w", encoding="utf-8") as f:
