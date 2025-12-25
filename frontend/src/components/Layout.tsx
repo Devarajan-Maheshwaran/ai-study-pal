@@ -10,6 +10,8 @@ import {
   Menu,
   GraduationCap,
   X,
+  Calendar,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,9 @@ const navItems = [
   { href: "/quiz", label: "Adaptive Quiz", icon: Brain },
   { href: "/study-tips", label: "Study Tips", icon: Lightbulb },
   { href: "/resources", label: "Resources", icon: BookOpen },
+  { href: "/study-plan", label: "Study Plan", icon: Calendar },
+  { href: "/generate-quiz", label: "Generate Quiz", icon: Target },
+  { href: "/summarize", label: "Summarizer", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -44,7 +49,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:transform-none",
+          "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card/80 border-r border-border transform transition-transform duration-200 ease-in-out lg:transform-none",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
