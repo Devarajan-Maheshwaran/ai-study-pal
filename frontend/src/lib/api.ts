@@ -111,71 +111,6 @@ export interface PingResponse {
   services: Record<string, string>;
 }
 
-export interface GenerateQuizRequest {
-  topic: string;
-  num_questions: number;
-}
-
-export interface QuizItem {
-  id: number;
-  question: string;
-  answer: string;
-  topic: string;
-  difficulty: string;
-  predicted_difficulty: string;
-}
-
-export interface GenerateQuizResponse {
-  topic: string;
-  num_questions: number;
-  items: QuizItem[];
-}
-
-export interface AvailableTopicsResponse {
-  available_topics: string[];
-  count: number;
-}
-
-export interface GenerateStudyPlanRequest {
-  subject: string;
-  total_hours: number;
-  difficulty: string;
-}
-
-export interface StudyPlanDay {
-  day: number;
-  topics: string[];
-  minutes_per_topic: number;
-  total_minutes: number;
-}
-
-export interface GenerateStudyPlanResponse {
-  subject: string;
-  difficulty: string;
-  total_hours: number;
-  num_days: number;
-  hours_per_day: number;
-  daily_schedule: StudyPlanDay[];
-}
-
-export interface AvailableSubjectsResponse {
-  available_subjects: string[];
-  count: number;
-}
-
-export interface SummarizeRequest {
-  text: string;
-  max_sentences: number;
-}
-
-export interface SummarizeResponse {
-  original_length: number;
-  summary_length: number;
-  compression_ratio: number;
-  max_sentences: number;
-  summary: string;
-}
-
 // API functions
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -244,11 +179,11 @@ export async function downloadSchedule(subject: string, hours: number): Promise<
   const response = await fetch(
     `${API_BASE}/download-schedule?subject=${encodeURIComponent(subject)}&hours=${hours}`
   );
-
+  
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
-
+  
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -258,43 +193,6 @@ export async function downloadSchedule(subject: string, hours: number): Promise<
   a.click();
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
-}
-
-export async function getAvailableTopics(): Promise<AvailableTopicsResponse> {
-  const response = await fetch(`${API_BASE}/available-topics`);
-  return handleResponse<AvailableTopicsResponse>(response);
-}
-
-export async function generateQuiz(request: GenerateQuizRequest): Promise<GenerateQuizResponse> {
-  const response = await fetch(`${API_BASE}/generate-quiz`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<GenerateQuizResponse>(response);
-}
-
-export async function getAvailableSubjects(): Promise<AvailableSubjectsResponse> {
-  const response = await fetch(`${API_BASE}/available-subjects`);
-  return handleResponse<AvailableSubjectsResponse>(response);
-}
-
-export async function generateStudyPlan(request: GenerateStudyPlanRequest): Promise<GenerateStudyPlanResponse> {
-  const response = await fetch(`${API_BASE}/generate-study-plan`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<GenerateStudyPlanResponse>(response);
-}
-
-export async function summarizeText(request: SummarizeRequest): Promise<SummarizeResponse> {
-  const response = await fetch(`${API_BASE}/summarize`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<SummarizeResponse>(response);
 }
 
 // User ID management

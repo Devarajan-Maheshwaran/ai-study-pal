@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 RES_DIR = DATA_DIR / "resources"
-MODELS_DIR = BASE_DIR / "backend" / "models"
+MODELS_DIR = BASE_DIR / "models"
 
 VEC_PATH = MODELS_DIR / "resource_tfidf_vectorizer.joblib"
 KMEANS_PATH = MODELS_DIR / "resource_kmeans.joblib"
