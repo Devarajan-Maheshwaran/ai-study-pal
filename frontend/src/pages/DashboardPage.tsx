@@ -108,18 +108,6 @@ export default function DashboardPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <div className="flex items-center gap-2">
-            {isHealthy === null ? (
-              <div className="w-3 h-3 rounded-full bg-muted animate-pulse" />
-            ) : isHealthy ? (
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            ) : (
-              <XCircle className="h-5 w-5 text-destructive" />
-            )}
-            <span className="text-sm text-muted-foreground">
-              {isHealthy === null ? "Checking..." : isHealthy ? "Backend Online" : "Backend Offline"}
-            </span>
-          </div>
         </div>
       </div>
 

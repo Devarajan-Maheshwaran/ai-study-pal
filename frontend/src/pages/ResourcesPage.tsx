@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { BookOpen, Search, ExternalLink, Loader2, Library } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,49 @@ import { Badge } from "@/components/ui/badge";
 import { getResourceSuggestions, Resource } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-export default function ResourcesPage() {
+export const ResourcesPage: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [topN, setTopN] = useState(5);
   const [resources, setResources] = useState<Resource[]>([]);
+  type YoutubeResult = {
+    videoId: string;
+    title: string;
+    description: string;
+    channelTitle: string;
+    thumbnail: string;
+    url: string;
+  };
+  const [youtubeResults, setYoutubeResults] = useState<YoutubeResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingYoutube, setLoadingYoutube] = useState(false);
   const { toast } = useToast();
+
+  const fetchYoutubeResults = async (query: string) => {
+    setLoadingYoutube(true);
+    try {
+      const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+      const maxResults = 5;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(query)}&maxResults=${maxResults}&key=${apiKey}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.items) {
+        setYoutubeResults(data.items.map((item: { id: { videoId: string }, snippet: { title: string, description: string, channelTitle: string, thumbnails: { medium: { url: string } } } }) => ({
+          videoId: item.id.videoId,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          channelTitle: item.snippet.channelTitle,
+          thumbnail: item.snippet.thumbnails.medium.url,
+          url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+        })));
+      } else {
+        setYoutubeResults([]);
+      }
+    } catch (err) {
+      setYoutubeResults([]);
+    } finally {
+      setLoadingYoutube(false);
+    }
+  };
 
   const handleGetResources = async () => {
     if (!subject.trim()) {
@@ -24,15 +61,15 @@ export default function ResourcesPage() {
       });
       return;
     }
-
     setLoading(true);
+    setYoutubeResults([]);
     try {
+      await fetchYoutubeResults(subject.trim());
       const response = await getResourceSuggestions({
         subject: subject.trim(),
         top_n: topN,
       });
       setResources(response.resources);
-
       if (response.resources.length === 0) {
         toast({
           title: "No Resources Found",
@@ -71,7 +108,6 @@ export default function ResourcesPage() {
           Discover curated learning resources for any subject
         </p>
       </div>
-
       {/* Search Card */}
       <Card>
         <CardHeader>
@@ -107,7 +143,6 @@ export default function ResourcesPage() {
               />
             </div>
           </div>
-
           <Button onClick={handleGetResources} disabled={loading || !subject.trim()}>
             {loading ? (
               <>
@@ -123,7 +158,40 @@ export default function ResourcesPage() {
           </Button>
         </CardContent>
       </Card>
-
+      {/* YouTube Results Grid */}
+      {youtubeResults.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">YouTube Videos</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {youtubeResults.map((video, idx) => (
+              <Card key={video.videoId} className="group hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base font-medium leading-tight">
+                      {video.title}
+                    </CardTitle>
+                    <Badge variant="secondary" className="shrink-0">YouTube</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <img src={video.thumbnail} alt={video.title} className="rounded w-full h-40 object-cover" />
+                  <p className="text-sm text-muted-foreground line-clamp-3">{video.description}</p>
+                  <a
+                    href={video.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                  >
+                    Watch on YouTube
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  <div className="text-xs text-muted-foreground">Channel: {video.channelTitle}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Resources Grid */}
       {resources.length > 0 && (
         <div className="space-y-4">
@@ -162,7 +230,6 @@ export default function ResourcesPage() {
           </div>
         </div>
       )}
-
       {/* Empty State */}
       {resources.length === 0 && !loading && (
         <Card className="border-dashed">
@@ -178,4 +245,5 @@ export default function ResourcesPage() {
       )}
     </div>
   );
-}
+};
+

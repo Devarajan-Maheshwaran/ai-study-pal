@@ -35,10 +35,20 @@ API Endpoints:
 - POST /api/suggest-resources     - Suggest learning resources by subject
 """
 
+
 import os
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import io
+import tempfile
+import requests
+import mimetypes
+import pdfplumber
+import docx
+import json
+import time
+import random
+import string
 
 # Import all AI services
 from services import (
@@ -137,6 +147,105 @@ def ping():
     })
 
 # ============================================================================
+# ROUTES: Auth API
+# ============================================================================
+
+@app.route("/api/signup", methods=["POST"])
+def signup():
+    """
+    Register a new user.
+
+    Request JSON:
+    {
+        "email": "user@gmail.com",
+        "password": "password123"
+    }
+
+    Response:
+    {
+        "message": "user created",
+        "user_id": "user_1234567890_abc123"
+    }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        email = data.get("email", "").strip()
+        password = data.get("password", "").strip()
+
+        if not email or not password:
+            return jsonify({"error": "email and password required"}), 400
+
+        if not email.endswith("@gmail.com"):
+            return jsonify({"error": "only gmail addresses allowed"}), 400
+
+        if len(password) < 6:
+            return jsonify({"error": "password must be at least 6 characters"}), 400
+
+        users_file = os.path.join(BASE_DIR, "data", "users.json")
+        if not os.path.exists(users_file):
+            with open(users_file, "w") as f:
+                json.dump([], f)
+
+        with open(users_file, "r") as f:
+            users = json.load(f)
+
+        if any(u["email"] == email for u in users):
+            return jsonify({"error": "user already exists"}), 400
+
+        user_id = f"user_{int(time.time()*1000)}_{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
+        users.append({"id": user_id, "email": email, "password": password})
+
+        with open(users_file, "w") as f:
+            json.dump(users, f, indent=2)
+
+        return jsonify({"message": "user created", "user_id": user_id})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    """
+    Login a user.
+
+    Request JSON:
+    {
+        "email": "user@gmail.com",
+        "password": "password123"
+    }
+
+    Response:
+    {
+        "token": "user_1234567890_abc123",
+        "user": {"id": "user_1234567890_abc123", "email": "user@gmail.com"}
+    }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        email = data.get("email", "").strip()
+        password = data.get("password", "").strip()
+
+        if not email or not password:
+            return jsonify({"error": "email and password required"}), 400
+
+        users_file = os.path.join(BASE_DIR, "data", "users.json")
+        if not os.path.exists(users_file):
+            return jsonify({"error": "no users registered"}), 400
+
+        with open(users_file, "r") as f:
+            users = json.load(f)
+
+        user = next((u for u in users if u["email"] == email and u["password"] == password), None)
+
+        if not user:
+            return jsonify({"error": "invalid credentials"}), 401
+
+        return jsonify({"token": user["id"], "user": {"id": user["id"], "email": user["email"]}})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================================
 # ROUTES: Quiz API
 # ============================================================================
 
@@ -158,56 +267,79 @@ def available_topics():
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/generate-quiz", methods=["POST"])
+
+def extract_text_from_file(file_storage):
+    filename = file_storage.filename
+    mime, _ = mimetypes.guess_type(filename)
+    if mime == "application/pdf":
+        with pdfplumber.open(file_storage) as pdf:
+            return "\n".join(page.extract_text() or "" for page in pdf.pages)
+    elif mime in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
+        doc = docx.Document(file_storage)
+        return "\n".join([p.text for p in doc.paragraphs])
+    else:
+        # fallback: treat as text
+        return file_storage.read().decode("utf-8", errors="ignore")
+
+def extract_text_from_link(link):
+    # Simple web page text extraction (can be improved with BeautifulSoup)
+    resp = requests.get(link, timeout=10)
+    if resp.status_code == 200:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        # Remove scripts/styles
+        for tag in soup(["script", "style"]):
+            tag.decompose()
+        return soup.get_text(separator=" ", strip=True)
+    return ""
+
+@app.route("/api/generate-quiz", methods=["POST"])
 def generate_quiz():
     """
-    Generate a quiz for a given topic.
-    
-    Request JSON:
-    {
-        "topic": "Python basics",
-        "num_questions": 5
-    }
-    
-    Response:
-    {
-        "topic": "Python basics",
-        "num_questions": 5,
-        "items": [
-            {
-                "id": 0,
-                "question": "...",
-                "answer": "...",
-                "topic": "Python basics",
-                "difficulty": "easy",
-                "predicted_difficulty": "easy"
-            },
-            ...
-        ]
-    }
+    Generate a quiz from topic, file, or link input.
+    Accepts JSON or multipart/form-data:
+    - topic: string
+    - num_questions: int
+    - file: uploaded file (pdf, docx, txt)
+    - link: url to extract text from
     """
     try:
-        data = request.get_json(force=True) or {}
-        topic = data.get("topic", "").strip()
-        num_questions = data.get("num_questions", 5)
-        
-        if not topic:
-            return jsonify({"error": "topic is required"}), 400
-        
-        try:
-            num_questions = int(num_questions)
-        except ValueError:
-            return jsonify({"error": "num_questions must be an integer"}), 400
-        
-        if num_questions <= 0:
-            return jsonify({"error": "num_questions must be > 0"}), 400
-        
-        result = quiz_service.generate_quiz_for_topic(topic, num_questions)
-        
-        if "error" in result:
-            return jsonify(result), 404
-        
-        return jsonify(result)
-    
+        if request.content_type and request.content_type.startswith("multipart/form-data"):
+            topic = request.form.get("topic", "").strip()
+            num_questions = int(request.form.get("num_questions", 5))
+            file = request.files.get("file")
+            link = request.form.get("link")
+        else:
+            data = request.get_json(force=True) or {}
+            topic = data.get("topic", "").strip()
+            num_questions = int(data.get("num_questions", 5))
+            file = None
+            link = data.get("link")
+
+        text = ""
+        if file:
+            text = extract_text_from_file(file)
+        elif link:
+            text = extract_text_from_link(link)
+        elif topic:
+            # fallback to topic-based quiz
+            result = quiz_service.generate_quiz_for_topic(topic, num_questions)
+            if "error" in result:
+                return jsonify(result), 404
+            return jsonify(result)
+        else:
+            return jsonify({"error": "Provide topic, file, or link"}), 400
+
+        if not text or not text.strip():
+            return jsonify({"error": "No text extracted from file or link"}), 400
+
+        # Use MCQ generator for file/link input
+        mcqs = mcq_generator.generate_mcqs_from_text(text, topic=topic or None, max_questions=num_questions)
+        return jsonify({
+            "topic": topic or "file/link input",
+            "num_questions": num_questions,
+            "items": mcqs
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -529,25 +661,25 @@ def generate_study_plan_endpoint():
         subject = data.get("subject", "").strip()
         total_hours = data.get("total_hours")
         difficulty = data.get("difficulty", "medium")
-        
+        user_profile = data.get("user_profile")
+
         if not subject:
             return jsonify({"error": "subject is required"}), 400
-        
+
         if total_hours is None:
             return jsonify({"error": "total_hours is required"}), 400
-        
+
         try:
             total_hours = float(total_hours)
         except (ValueError, TypeError):
             return jsonify({"error": "total_hours must be a number"}), 400
-        
-        plan = study_plan_service.generate_study_plan(subject, total_hours, difficulty)
-        
+
+        plan = study_plan_service.generate_study_plan(subject, total_hours, difficulty, user_profile)
+
         if "error" in plan:
             return jsonify(plan), 404
-        
+
         return jsonify(plan)
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Lightbulb, FileText, Sparkles, Loader2, List, Quote } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,11 @@ import { Separator } from "@/components/ui/separator";
 import { summarize, getStudyTips } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-export default function StudyTipsPage() {
+export function StudyTipsPage() {
+  const [inputType, setInputType] = useState<'text' | 'file' | 'link'>('text');
   const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [link, setLink] = useState("");
   const [subject, setSubject] = useState("");
   const [maxSentences, setMaxSentences] = useState(3);
   const [summary, setSummary] = useState("");
@@ -18,34 +22,77 @@ export default function StudyTipsPage() {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [loadingTips, setLoadingTips] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+// ...existing code...
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const extractContent = async (): Promise<string> => {
+    if (inputType === 'text') return text.trim();
+    if (inputType === 'link') {
+      // Call backend to extract text from link
+      const res = await fetch('http://localhost:5000/api/generate-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link }),
+      });
+      const data = await res.json();
+      if (data.items && data.items.length > 0) {
+        return data.items.map((item: { question: string }) => item.question).join(' ');
+      }
+      return '';
+    }
+    if (inputType === 'file' && file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('http://localhost:5000/api/generate-quiz', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.items && data.items.length > 0) {
+        return data.items.map((item: { question: string }) => item.question).join(' ');
+      }
+      return '';
+    }
+    return '';
+  };
 
   const handleSummarize = async () => {
-    if (!text.trim()) {
-      toast({
-        title: "Text Required",
-        description: "Please enter some text to summarize.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoadingSummary(true);
     try {
+      let content = text.trim();
+      if (inputType !== 'text') {
+        content = await extractContent();
+      }
+      if (!content) {
+        toast({
+          title: 'No Content',
+          description: 'No content found to summarize.',
+          variant: 'destructive',
+        });
+        setLoadingSummary(false);
+        return;
+      }
       const response = await summarize({
-        text: text.trim(),
+        text: content,
         max_sentences: maxSentences,
       });
       setSummary(response.summary);
       toast({
-        title: "Summary Generated",
-        description: "Your text has been summarized successfully.",
+        title: 'Summary Generated',
+        description: 'Your content has been summarized successfully.',
       });
     } catch (error) {
-      console.error("Failed to summarize:", error);
+      console.error('Failed to summarize:', error);
       toast({
-        title: "Summarization Failed",
-        description: "Unable to summarize text. Please try again.",
-        variant: "destructive",
+        title: 'Summarization Failed',
+        description: 'Unable to summarize content. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setLoadingSummary(false);
@@ -53,32 +100,36 @@ export default function StudyTipsPage() {
   };
 
   const handleGenerateTips = async () => {
-    if (!text.trim()) {
-      toast({
-        title: "Text Required",
-        description: "Please enter some text to generate study tips from.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoadingTips(true);
     try {
+      let content = text.trim();
+      if (inputType !== 'text') {
+        content = await extractContent();
+      }
+      if (!content) {
+        toast({
+          title: 'No Content',
+          description: 'No content found to generate tips.',
+          variant: 'destructive',
+        });
+        setLoadingTips(false);
+        return;
+      }
       const response = await getStudyTips({
-        text: text.trim(),
+        text: content,
         subject: subject.trim() || null,
       });
       setTips(response.tips);
       toast({
-        title: "Tips Generated",
+        title: 'Tips Generated',
         description: `Generated ${response.tips.length} study tips for ${response.subject}.`,
       });
     } catch (error) {
-      console.error("Failed to generate tips:", error);
+      console.error('Failed to generate tips:', error);
       toast({
-        title: "Generation Failed",
-        description: "Unable to generate study tips. Please try again.",
-        variant: "destructive",
+        title: 'Generation Failed',
+        description: 'Unable to generate study tips. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setLoadingTips(false);
@@ -103,12 +154,22 @@ export default function StudyTipsPage() {
             Your Content
           </CardTitle>
           <CardDescription>
-            Enter your study material to get a summary and helpful tips
+            Enter your study material as text, file, or link to get a summary and helpful tips
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="text">Text Content</Label>
+          <div className="flex gap-4">
+            <label>
+              <input type="radio" checked={inputType === 'text'} onChange={() => setInputType('text')} /> Text
+            </label>
+            <label>
+              <input type="radio" checked={inputType === 'file'} onChange={() => setInputType('file')} /> File (PDF/DOCX)
+            </label>
+            <label>
+              <input type="radio" checked={inputType === 'link'} onChange={() => setInputType('link')} /> Link
+            </label>
+          </div>
+          {inputType === 'text' && (
             <Textarea
               id="text"
               placeholder="Paste your study material, lecture notes, or textbook content here..."
@@ -116,8 +177,19 @@ export default function StudyTipsPage() {
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
-          </div>
-
+          )}
+          {inputType === 'file' && (
+            <input type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} />
+          )}
+          {inputType === 'link' && (
+            <Input
+              type="url"
+              className="w-full"
+              value={link}
+              onChange={e => setLink(e.target.value)}
+              placeholder="Paste a webpage or Google Doc link..."
+            />
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="subject">Subject (Optional)</Label>
@@ -140,12 +212,11 @@ export default function StudyTipsPage() {
               />
             </div>
           </div>
-
           <div className="flex flex-wrap gap-3">
             <Button
               variant="secondary"
               onClick={handleSummarize}
-              disabled={loadingSummary || !text.trim()}
+              disabled={loadingSummary}
             >
               {loadingSummary ? (
                 <>
@@ -161,7 +232,7 @@ export default function StudyTipsPage() {
             </Button>
             <Button
               onClick={handleGenerateTips}
-              disabled={loadingTips || !text.trim()}
+              disabled={loadingTips}
             >
               {loadingTips ? (
                 <>
@@ -174,6 +245,20 @@ export default function StudyTipsPage() {
                   Generate Study Tips
                 </>
               )}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/summarize', { state: { text, summary } })}
+              disabled={!summary}
+            >
+              Go to Summarizer
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/generate-quiz', { state: { text } })}
+              disabled={!text && !file && !link}
+            >
+              Go to Quiz Generator
             </Button>
           </div>
         </CardContent>

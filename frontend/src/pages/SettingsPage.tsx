@@ -13,6 +13,10 @@ export default function SettingsPage() {
   const [scheduleSubject, setScheduleSubject] = useState("");
   const [scheduleHours, setScheduleHours] = useState(10);
   const [downloading, setDownloading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [grade, setGrade] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -75,6 +79,23 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveUserProfile = () => {
+    if (!email.trim() || !name.trim() || !age.trim() || !grade.trim()) {
+      toast({
+        title: "All Fields Required",
+        description: "Please fill in all profile fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Save to localStorage or backend as needed
+    localStorage.setItem("user_profile", JSON.stringify({ email, name, age, grade, userId }));
+    toast({
+      title: "Profile Saved",
+      description: "Your profile has been updated successfully.",
+    });
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
       {/* Header */}
@@ -120,6 +141,57 @@ export default function SettingsPage() {
               Generate New ID
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* User Profile Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            User Profile
+          </CardTitle>
+          <CardDescription>
+            Basic information for personalized experience
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              type="email"
+            />
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Enter your name"
+            />
+            <Label htmlFor="age">Age</Label>
+            <Input
+              id="age"
+              value={age}
+              onChange={e => setAge(e.target.value)}
+              placeholder="Enter your age"
+              type="number"
+            />
+            <Label htmlFor="grade">Grade</Label>
+            <Input
+              id="grade"
+              value={grade}
+              onChange={e => setGrade(e.target.value)}
+              placeholder="Enter your grade"
+            />
+          </div>
+          <Button onClick={handleSaveUserProfile}>
+            <Save className="h-4 w-4 mr-2" />
+            Save Profile
+          </Button>
         </CardContent>
       </Card>
 

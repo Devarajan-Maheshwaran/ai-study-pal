@@ -34,7 +34,7 @@ class StudyPlanService:
         templates_path = os.path.join(model_dir, "study_plan_templates.joblib")
         self.templates = joblib.load(templates_path)
     
-    def generate_plan(self, subject: str, total_hours: int, difficulty: str = "medium") -> dict:
+    def generate_plan(self, subject: str, total_hours: int, difficulty: str = "medium", user_profile: dict = None) -> dict:
         """
         Generate a structured AI study plan.
         
@@ -74,27 +74,21 @@ class StudyPlanService:
                 "error": f"Subject '{subject}' not found",
                 "available_subjects": available
             }
-        
         if difficulty not in self.templates[subject]:
             available_diffs = list(self.templates[subject].keys())
             return {
                 "error": f"Difficulty '{difficulty}' not available for '{subject}'",
                 "available_difficulties": available_diffs
             }
-        
         if not isinstance(total_hours, (int, float)) or total_hours <= 0:
             return {"error": "total_hours must be a positive number"}
-        
         topics = self.templates[subject][difficulty]
         num_topics = len(topics)
-        
         # Determine optimal number of study days (3-7 days)
         num_days = max(3, min(7, num_topics))
-        
         hours_per_day = total_hours / num_days
         minutes_per_day = hours_per_day * 60
         minutes_per_topic = int(minutes_per_day / (num_topics / num_days))
-        
         plan = {
             "subject": subject,
             "difficulty": difficulty,
@@ -104,22 +98,18 @@ class StudyPlanService:
             "created_at": datetime.now().isoformat(),
             "daily_schedule": []
         }
-        
         # Distribute topics across days
         topics_per_day = num_topics / num_days
-        
         for day in range(num_days):
             start_idx = int(day * topics_per_day)
             end_idx = int((day + 1) * topics_per_day)
             day_topics = topics[start_idx:end_idx]
-            
             plan["daily_schedule"].append({
                 "day": day + 1,
                 "topics": day_topics,
                 "minutes_per_topic": minutes_per_topic,
                 "total_minutes": len(day_topics) * minutes_per_topic,
             })
-        
         return plan
     
     def study_plan_to_csv(self, plan: dict) -> str:
@@ -178,9 +168,9 @@ def get_study_plan_service() -> StudyPlanService:
         raise RuntimeError("StudyPlanService not initialized. Call init_study_plan_service first.")
     return study_plan_service
 
-def generate_study_plan(subject: str, total_hours: int, difficulty: str = "medium") -> dict:
+def generate_study_plan(subject: str, total_hours: int, difficulty: str = "medium", user_profile: dict = None) -> dict:
     """Public function to generate study plan (called by Flask routes)."""
-    return get_study_plan_service().generate_plan(subject, total_hours, difficulty)
+    return get_study_plan_service().generate_plan(subject, total_hours, difficulty, user_profile)
 
 def study_plan_to_csv(plan: dict) -> str:
     """Public function to convert plan to CSV (called by Flask routes)."""

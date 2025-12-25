@@ -40,3 +40,34 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Vanilla Auth Styles */
+.bg-card {
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+}
+.text-primary {
+  color: #DAA520;
+}
+.bg-primary {
+  background: #DAA520;
+}
+.rounded {
+  border-radius: 0.5rem;
+}
+.shadow {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-bold {
+  font-weight: 700;
+}
+.status {
+  min-height: 1.5em;
+}
+.switch-link {
+  color: #333;
+}
