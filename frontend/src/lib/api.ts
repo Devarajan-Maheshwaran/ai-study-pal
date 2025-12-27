@@ -1,7 +1,7 @@
 // API configuration and types for AI Study Pal
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "/"; // proxy sends this to http://127.0.0.1:5000
 
-// Types
+// Type definitions
 export interface MCQ {
   id: string;
   question: string;
@@ -11,189 +11,137 @@ export interface MCQ {
   difficulty: "easy" | "medium" | "hard";
 }
 
-export interface GenerateMcqsRequest {
-  text: string;
-  topic: string | null;
+export interface NotesToMcqsRequest {
+  source_type: "text" | "url" | "youtube" | "pdf";
+  subject: string;
+  notes?: string;
+  url?: string;
+  youtube_url?: string;
   max_questions: number;
 }
 
-export interface GenerateMcqsResponse {
-  mcqs: MCQ[];
+export interface NotesToMcqsResponse {
+  questions: MCQ[];
 }
 
-export interface AnswerMcqRequest {
+export interface AdaptiveQuizResponse {
+  questions: MCQ[];
+}
+
+export interface SubmitQuizRequest {
   user_id: string;
-  mcq: MCQ;
-  chosen_index: number;
+  subject: string;
+  answers: Array<{ question_id: string; correct: boolean }>;
 }
 
-export interface AnswerMcqResult {
-  mcq_id: string;
-  topic: string;
-  difficulty: string;
-  chosen_index: number;
-  correct_index: number;
-  correct: boolean;
-}
-
-export interface AnswerMcqFeedback {
-  is_correct: boolean;
-  message: string;
-}
-
-export interface AnswerMcqResponse {
-  result: AnswerMcqResult;
-  feedback: AnswerMcqFeedback;
-}
-
-export interface TopicStats {
-  attempts: number;
+export interface SubmitQuizResponse {
   correct: number;
-  easy: number;
-  medium: number;
-  hard: number;
+  total: number;
   accuracy: number;
+  feedback: string;
 }
 
-export interface NextStep {
-  type: "review" | "quiz";
-  topic: string;
-  difficulty?: "easy" | "medium" | "hard";
-  count?: number;
-  resource?: string;
-  reason?: string;
-}
-
-export interface LearningPathResponse {
-  user_id: string;
-  topic_stats: Record<string, TopicStats>;
-  next_steps: NextStep[];
-}
-
-export interface SummarizeRequest {
+export interface RevisionSummaryRequest {
   text: string;
+  subject: string;
   max_sentences: number;
 }
 
-export interface SummarizeResponse {
+export interface RevisionSummaryResponse {
   summary: string;
+  tips?: string[];
 }
 
-export interface StudyTipsRequest {
-  text: string;
-  subject: string | null;
+export interface ResourcesResponse {
+  resources: Array<{
+    subject: string;
+    title: string;
+    url: string;
+    description: string;
+  }>;
 }
 
-export interface StudyTipsResponse {
-  subject: string;
-  tips: string[];
+export interface SubjectsResponse {
+  subjects: string[];
 }
 
-export interface ResourceSuggestionsRequest {
-  subject: string;
-  top_n: number;
-}
 
-export interface Resource {
-  subject: string;
-  title: string;
-  url: string;
-  description: string;
-}
 
-export interface ResourceSuggestionsResponse {
-  subject: string;
-  resources: Resource[];
-}
-
-export interface PingResponse {
+export interface HealthResponse {
   status: string;
-  services: Record<string, string>;
 }
 
-// API functions
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `HTTP error! status: ${response.status}`);
+async function request<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(API_BASE + path, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API ${path} failed: ${res.status} ${text}`);
   }
-  return response.json();
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return res.json();
+  return res.text() as T; // for CSV download
 }
 
-export async function ping(): Promise<PingResponse> {
-  const response = await fetch(`${API_BASE}/ping`);
-  return handleResponse<PingResponse>(response);
+// NEW: CSV download helper (returns plain text CSV)
+async function downloadSchedule(subject: string, hours: number): Promise<string> {
+  const params = new URLSearchParams({
+    subject,
+    hours: String(hours),
+  }).toString();
+
+  const res = await fetch(`${API_BASE}api/study-schedule?${params}`);
+  if (!res.ok) throw new Error(`GET study-schedule failed: ${res.status}`);
+  return res.text(); // backend returns CSV
 }
 
-export async function generateMcqs(request: GenerateMcqsRequest): Promise<GenerateMcqsResponse> {
-  const response = await fetch(`${API_BASE}/generate-mcqs`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<GenerateMcqsResponse>(response);
-}
+export const api = {
+  health: (): Promise<HealthResponse> => request<HealthResponse>("health"),
+  subjects: (): Promise<SubjectsResponse> => request<SubjectsResponse>("api/subjects"),
+  dashboard: (userId: string): Promise<DashboardData> =>
+    request<DashboardData>(`api/dashboard?user_id=${encodeURIComponent(userId)}`),
+  notesToMcqs: (body: NotesToMcqsRequest): Promise<NotesToMcqsResponse> =>
+    request<NotesToMcqsResponse>("api/notes-to-mcqs", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  adaptiveQuiz: (userId: string, subject: string): Promise<AdaptiveQuizResponse> =>
+    request<AdaptiveQuizResponse>(
+      `api/adaptive-quiz?user_id=${encodeURIComponent(
+        userId
+      )}&subject=${encodeURIComponent(subject)}`
+    ),
+  submitQuiz: (body: SubmitQuizRequest): Promise<SubmitQuizResponse> =>
+    request<SubmitQuizResponse>("api/quiz/submit", { method: "POST", body: JSON.stringify(body) }),
+  revisionSummary: (body: RevisionSummaryRequest): Promise<RevisionSummaryResponse> =>
+    request<RevisionSummaryResponse>("api/revision-summary", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  resources: (subject: string, limit = 5): Promise<ResourcesResponse> =>
+    request<ResourcesResponse>(
+      `api/resources?subject=${encodeURIComponent(
+        subject
+      )}&limit=${limit}`
+    ),
+  studySchedule: async (subject: string, hours: number): Promise<string> => {
+    const res = await fetch(
+      `/api/study-schedule?subject=${encodeURIComponent(
+        subject
+      )}&hours=${hours}`
+    );
+    if (!res.ok) throw new Error("schedule download failed");
+    return res.text(); // CSV string
+  },
+};
 
-export async function answerMcq(request: AnswerMcqRequest): Promise<AnswerMcqResponse> {
-  const response = await fetch(`${API_BASE}/answer-mcq`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<AnswerMcqResponse>(response);
-}
-
-export async function getLearningPath(userId: string): Promise<LearningPathResponse> {
-  const response = await fetch(`${API_BASE}/learning-path?user_id=${encodeURIComponent(userId)}`);
-  return handleResponse<LearningPathResponse>(response);
-}
-
-export async function summarize(request: SummarizeRequest): Promise<SummarizeResponse> {
-  const response = await fetch(`${API_BASE}/summarize`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<SummarizeResponse>(response);
-}
-
-export async function getStudyTips(request: StudyTipsRequest): Promise<StudyTipsResponse> {
-  const response = await fetch(`${API_BASE}/study-tips`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<StudyTipsResponse>(response);
-}
-
-export async function getResourceSuggestions(request: ResourceSuggestionsRequest): Promise<ResourceSuggestionsResponse> {
-  const response = await fetch(`${API_BASE}/resource-suggestions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  return handleResponse<ResourceSuggestionsResponse>(response);
-}
-
-export async function downloadSchedule(subject: string, hours: number): Promise<void> {
-  const response = await fetch(
-    `${API_BASE}/download-schedule?subject=${encodeURIComponent(subject)}&hours=${hours}`
-  );
-  
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${subject}_schedule.csv`;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
-}
+export { downloadSchedule }; // named export so SettingsPage.tsx import works
 
 // User ID management
 export function getUserId(): string {

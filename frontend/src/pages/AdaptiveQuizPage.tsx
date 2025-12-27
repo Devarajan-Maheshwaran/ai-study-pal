@@ -17,15 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import {
-  generateMcqs,
-  answerMcq,
-  getLearningPath,
-  getUserId,
-  MCQ,
-  NextStep,
-  LearningPathResponse,
-} from "@/lib/api";
+import { api, getUserId } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -128,18 +120,19 @@ export default function AdaptiveQuizPage() {
     setSubmitting(true);
 
     try {
-      const response = await answerMcq({
+      const body = {
         user_id: getUserId(),
-        mcq: currentMcq,
-        chosen_index: quiz.selectedAnswer,
-      });
+        subject: currentMcq.topic,
+        answers: [{ question_id: currentMcq.id, correct: quiz.selectedAnswer === currentMcq.correct_index }],
+      };
+      const response = await api.submitQuiz(body);
 
       setQuiz((prev) => ({
         ...prev,
         isSubmitted: true,
-        isCorrect: response.feedback.is_correct,
-        feedbackMessage: response.feedback.message,
-        score: prev.score + (response.feedback.is_correct ? 1 : 0),
+        isCorrect: quiz.selectedAnswer === currentMcq.correct_index,
+        feedbackMessage: response.feedback,
+        score: prev.score + (quiz.selectedAnswer === currentMcq.correct_index ? 1 : 0),
       }));
     } catch (error) {
       console.error("Failed to submit answer:", error);

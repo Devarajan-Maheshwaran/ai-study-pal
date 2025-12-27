@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { summarize, getStudyTips } from "@/lib/api";
+import { api, RevisionSummaryRequest } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export function StudyTipsPage() {
@@ -78,10 +78,8 @@ export function StudyTipsPage() {
         setLoadingSummary(false);
         return;
       }
-      const response = await summarize({
-        text: content,
-        max_sentences: maxSentences,
-      });
+      const body = { text: content, subject: subject.trim() || "General", max_sentences: maxSentences };
+      const response = await api.revisionSummary(body);
       setSummary(response.summary);
       toast({
         title: 'Summary Generated',
@@ -115,14 +113,16 @@ export function StudyTipsPage() {
         setLoadingTips(false);
         return;
       }
-      const response = await getStudyTips({
+      const request: RevisionSummaryRequest = {
         text: content,
-        subject: subject.trim() || null,
-      });
-      setTips(response.tips);
+        subject: subject.trim() || "General",
+        max_sentences: maxSentences,
+      };
+      const response = await api.revisionSummary(request);
+      setTips(response.tips || []);
       toast({
         title: 'Tips Generated',
-        description: `Generated ${response.tips.length} study tips for ${response.subject}.`,
+        description: `Generated ${response.tips?.length || 0} study tips.`,
       });
     } catch (error) {
       console.error('Failed to generate tips:', error);
