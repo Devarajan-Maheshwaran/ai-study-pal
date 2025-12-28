@@ -1,0 +1,38 @@
+.app-root {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0f2fe 0%, #ecfdf3 100%);
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  background: radial-gradient(circle at top left, #e0f2fe88, transparent),
+              radial-gradient(circle at bottom right, #dcfce788, transparent);
+}
+
+/* Example: cards */
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+}
+
+/* Example: primary button */
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border-radius: 999px;
+}
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+/* Secondary / success */
+.btn-secondary {
+  background: var(--secondary);
+  color: #ffffff;
+}

@@ -62,7 +62,14 @@ export default function SettingsPage() {
 
     setDownloading(true);
     try {
-      await downloadSchedule(scheduleSubject.trim(), scheduleHours);
+      const csv = await downloadSchedule(scheduleSubject.trim(), scheduleHours);
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${scheduleSubject.trim()}_schedule.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
       toast({
         title: "Schedule Downloaded",
         description: `Your ${scheduleSubject} study schedule has been downloaded.`,

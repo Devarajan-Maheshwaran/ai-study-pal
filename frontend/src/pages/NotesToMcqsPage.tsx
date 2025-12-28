@@ -7,16 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { generateMcqs, answerMcq, getUserId, MCQ, AnswerMcqFeedback } from "@/lib/api";
+import { api, getUserId } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { MCQ, NotesToMcqsRequest } from "../types/mcq";
 
-interface McqWithState extends MCQ {
+type McqWithState = MCQ & {
   selectedIndex: number | null;
-  isSubmitted: boolean;
   isCorrect: boolean | null;
-  feedback: AnswerMcqFeedback | null;
-}
+};
 
 export default function NotesToMcqsPage() {
   const [notes, setNotes] = useState("");
@@ -39,31 +38,33 @@ export default function NotesToMcqsPage() {
 
     setLoading(true);
     try {
-      const response = await generateMcqs({
-        text: notes,
-        topic: topic.trim() || null,
+      const payload: NotesToMcqsRequest = {
+        source_type: "text",
+        subject: topic.trim() || "General",
+        notes,
         max_questions: maxQuestions,
-      });
+      };
 
-      setMcqs(
-        response.mcqs.map((mcq) => ({
-          ...mcq,
-          selectedIndex: null,
-          isSubmitted: false,
-          isCorrect: null,
-          feedback: null,
-        }))
-      );
+      const res = await api.notesToMcqs(payload);
+      const raw: MCQ[] = res.questions;
+
+      const withState: McqWithState[] = raw.map((q) => ({
+        ...q,
+        selectedIndex: null,
+        isCorrect: null,
+      }));
+      setMcqs(withState);
 
       toast({
         title: "MCQs Generated",
-        description: `Successfully generated ${response.mcqs.length} questions.`,
+        description: `Successfully generated ${withState.length} questions.`,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to generate MCQs:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unable to generate MCQs. Please try again.";
       toast({
         title: "Generation Failed",
-        description: "Unable to generate MCQs. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -71,58 +72,22 @@ export default function NotesToMcqsPage() {
     }
   };
 
-  const handleSelectOption = (mcqId: string, index: number) => {
+  const answerMcq = (id: number, selectedIndex: number) => {
     setMcqs((prev) =>
-      prev.map((mcq) =>
-        mcq.id === mcqId && !mcq.isSubmitted
-          ? { ...mcq, selectedIndex: index }
-          : mcq
-      )
+      prev.map((q) => {
+        if (q.id !== id) return q;
+        const selectedOption = q.options[selectedIndex];
+        const isCorrect = selectedOption === q.answer;
+        return { ...q, selectedIndex, isCorrect };
+      })
     );
   };
 
-  const handleSubmitAnswer = async (mcqId: string) => {
-    const mcq = mcqs.find((m) => m.id === mcqId);
-    if (!mcq || mcq.selectedIndex === null) return;
-
-    setSubmittingId(mcqId);
-    try {
-      const response = await answerMcq({
-        user_id: getUserId(),
-        mcq: {
-          id: mcq.id,
-          question: mcq.question,
-          options: mcq.options,
-          correct_index: mcq.correct_index,
-          topic: mcq.topic,
-          difficulty: mcq.difficulty,
-        },
-        chosen_index: mcq.selectedIndex,
-      });
-
-      setMcqs((prev) =>
-        prev.map((m) =>
-          m.id === mcqId
-            ? {
-                ...m,
-                isSubmitted: true,
-                isCorrect: response.feedback.is_correct,
-                feedback: response.feedback,
-              }
-            : m
-        )
-      );
-    } catch (error) {
-      console.error("Failed to submit answer:", error);
-      toast({
-        title: "Submission Failed",
-        description: "Unable to submit answer. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmittingId(null);
-    }
+  const handleSelectOption = (mcqId: number, index: number) => {
+    answerMcq(mcqId, index);
   };
+
+
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -225,7 +190,7 @@ export default function NotesToMcqsPage() {
               key={mcq.id}
               className={cn(
                 "transition-all",
-                mcq.isSubmitted &&
+                mcq.isCorrect !== null &&
                   (mcq.isCorrect
                     ? "border-green-500 bg-green-50/50"
                     : "border-red-500 bg-red-50/50")
@@ -235,14 +200,14 @@ export default function NotesToMcqsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <CardTitle className="text-base font-medium leading-relaxed">
                     <span className="text-muted-foreground mr-2">Q{index + 1}.</span>
-                    {mcq.question}
+                    {mcq.stem}
                   </CardTitle>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge
                       variant="secondary"
-                      className={getDifficultyColor(mcq.difficulty)}
+                      className={getDifficultyColor(mcq.difficulty || "medium")}
                     >
-                      {mcq.difficulty}
+                      {mcq.difficulty || "medium"}
                     </Badge>
                     {mcq.topic && (
                       <Badge variant="outline">{mcq.topic}</Badge>
@@ -254,12 +219,12 @@ export default function NotesToMcqsPage() {
                 <RadioGroup
                   value={mcq.selectedIndex?.toString() ?? ""}
                   onValueChange={(val) => handleSelectOption(mcq.id, parseInt(val))}
-                  disabled={mcq.isSubmitted}
+                  disabled={mcq.isCorrect !== null}
                 >
                   {mcq.options.map((option, optionIndex) => {
                     const isSelected = mcq.selectedIndex === optionIndex;
-                    const isCorrect = mcq.correct_index === optionIndex;
-                    const showResult = mcq.isSubmitted;
+                    const isCorrectOption = option === mcq.answer;
+                    const showResult = mcq.isCorrect !== null;
 
                     return (
                       <div
@@ -268,8 +233,8 @@ export default function NotesToMcqsPage() {
                           "flex items-center space-x-3 p-3 rounded-lg border transition-colors",
                           !showResult && isSelected && "border-primary bg-primary/5",
                           !showResult && !isSelected && "hover:bg-accent/50",
-                          showResult && isCorrect && "border-green-500 bg-green-100",
-                          showResult && isSelected && !isCorrect && "border-red-500 bg-red-100"
+                          showResult && isCorrectOption && "border-green-500 bg-green-100",
+                          showResult && isSelected && !isCorrectOption && "border-red-500 bg-red-100"
                         )}
                       >
                         <RadioGroupItem
@@ -282,10 +247,10 @@ export default function NotesToMcqsPage() {
                         >
                           {option}
                         </Label>
-                        {showResult && isCorrect && (
+                        {showResult && isCorrectOption && (
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
                         )}
-                        {showResult && isSelected && !isCorrect && (
+                        {showResult && isSelected && !isCorrectOption && (
                           <XCircle className="h-5 w-5 text-red-600" />
                         )}
                       </div>
@@ -293,34 +258,17 @@ export default function NotesToMcqsPage() {
                   })}
                 </RadioGroup>
 
-                {mcq.isSubmitted && mcq.feedback && (
+                {mcq.isCorrect !== null && (
                   <div
                     className={cn(
                       "p-3 rounded-lg text-sm",
                       mcq.isCorrect
                         ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
+                        : "bg-red-100 text-red-100"
                     )}
                   >
-                    {mcq.feedback.message}
+                    {mcq.isCorrect ? "Correct!" : `Incorrect. The correct answer is: ${mcq.answer}`}
                   </div>
-                )}
-
-                {!mcq.isSubmitted && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleSubmitAnswer(mcq.id)}
-                    disabled={mcq.selectedIndex === null || submittingId === mcq.id}
-                  >
-                    {submittingId === mcq.id ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      "Submit Answer"
-                    )}
-                  </Button>
                 )}
               </CardContent>
             </Card>
