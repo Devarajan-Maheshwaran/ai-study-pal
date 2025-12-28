@@ -50,18 +50,6 @@ import time
 import random
 import string
 
-# Import all AI services
-from services import (
-    quiz_service,
-    summarizer_service,
-    nlp_service,
-    feedback_service,
-    study_plan_service,
-    mcq_generator,
-    learning_path,
-    resource_suggester,
-)
-
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend development

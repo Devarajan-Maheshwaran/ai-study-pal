@@ -11,11 +11,13 @@ import { StudyTipsPage } from "./pages/StudyTipsPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import { AuroraBackground } from './components/aurora-background';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => (    
+            <AuroraBackground>
+<QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -35,6 +37,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+        </AuroraBackground>
+            );
 
 export default App;

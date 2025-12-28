@@ -23,6 +23,7 @@ export default {
   				DEFAULT: 'hsl(var(--primary))',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
+
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
   				foreground: 'hsl(var(--secondary-foreground))'
@@ -57,6 +58,14 @@ export default {
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
   			}
+			            aurora: {
+              DEFAULT: 'linear-gradient(180deg, #667eea 0%, #764ba2 100%)',
+              purple: '#667eea',
+              pink: '#f093fb',
+              cyan: '#4facfe',
+              blue: '#00f2fe',
+              teal: '#43e97b',
+            },
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

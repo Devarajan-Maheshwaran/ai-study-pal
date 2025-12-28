@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/workspaces/ai-study-pal/backend/app.py", line 46, in <module>
+    import pdfplumber
+ModuleNotFoundError: No module named 'pdfplumber'
