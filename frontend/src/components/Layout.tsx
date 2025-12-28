@@ -20,6 +20,3 @@ export const Layout = ({ children }: LayoutProps) => {
     </div>
   );
 };
-=======
-import type { ReactNode } from "react";
-import Aurora from "./Aurora";
