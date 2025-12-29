@@ -16,7 +16,7 @@ import { AuroraBackground } from './components/aurora-background';
 const queryClient = new QueryClient();
 
 const App = () => (    
-            <AuroraBackground>
+            <Aurora>
 <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -37,7 +37,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-        </AuroraBackground>
+        </Aurora>
             );
 
 export default App;
