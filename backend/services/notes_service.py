@@ -1,27 +1,42 @@
-import json
+import requests
+from PyPDF2 import PdfReader
+from io import BytesIO
 
-def parse_text(text):
-    return {'type': 'text', 'content': text}
+def parse_text(notes):
+    return notes if notes else ""
 
-def parse_pdf(file_path):
+def parse_pdf(file):
+    """Extract text from PDF."""
     try:
-        import PyPDF2
+        pdf = PdfReader(BytesIO(file.read()))
         text = ""
-        with open(file_path, 'rb') as f:
-            reader = PyPDF2.PdfReader(f)
-            for page in reader.pages:
-                text += page.extract_text()
-        return {'type': 'pdf', 'content': text}
+        for page in pdf.pages:
+            text += page.extract_text()
+        return text
     except:
-        return {'type': 'pdf', 'content': '', 'error': 'Could not parse PDF'}
+        return ""
 
-def fetch_url(url):
+def parse_url(url):
+    """Extract text from URL."""
     try:
-        import requests
-        response = requests.get(url, timeout=5)
-        return {'type': 'url', 'content': response.text}
+        resp = requests.get(url, timeout=5)
+        # Simple extraction - just get first 500 chars of content
+        return resp.text[:500]
     except:
-        return {'type': 'url', 'content': '', 'error': 'Could not fetch URL'}
+        return ""
 
-def fetch_youtube(video_id):
-    return {'type': 'youtube', 'content': f'Video {video_id} data'}
+def parse_youtube(youtube_url):
+    """Extract transcript from YouTube (stub)."""
+    return "YouTube video content. Please add transcript API key."
+
+def parse_source(source_type, notes=None, url=None, youtube_url=None, file=None):
+    """Parse different source types."""
+    if source_type == "text":
+        return parse_text(notes)
+    elif source_type == "pdf":
+        return parse_pdf(file) if file else ""
+    elif source_type == "url":
+        return parse_url(url)
+    elif source_type == "youtube":
+        return parse_youtube(youtube_url)
+    return ""

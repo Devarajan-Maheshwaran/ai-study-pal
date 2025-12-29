@@ -1,29 +1,30 @@
 import csv
-from pathlib import Path
+import os
 
-RESOURCES_FILE = 'data/resources.csv'
+RESOURCES_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'resources.csv')
 
 def init_resources():
-    Path('data').mkdir(exist_ok=True)
-    resources = [
-        {'subject': 'Python Basics', 'title': 'Python Docs', 'url': 'https://docs.python.org', 'type': 'web'},
-        {'subject': 'AIML Fundamentals', 'title': 'ML Tutorial', 'url': 'https://youtu.be/example', 'type': 'youtube'},
-    ]
-    with open(RESOURCES_FILE, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['subject', 'title', 'url', 'type'])
-        writer.writeheader()
-        writer.writerows(resources)
+    """Initialize resources file."""
+    if not os.path.exists(RESOURCES_FILE):
+        os.makedirs(os.path.dirname(RESOURCES_FILE), exist_ok=True)
+        with open(RESOURCES_FILE, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['subject', 'title', 'url', 'type'])
+            writer.writerow(['Mathematics', 'Khan Academy Math', 'https://www.khanacademy.org/math', 'web'])
+            writer.writerow(['Science', 'Crash Course Science', 'https://www.youtube.com/@crashcourse', 'youtube'])
 
-def get_resources(subject=None):
-    if not Path(RESOURCES_FILE).exists():
-        init_resources()
+def get_resources(subject, limit=10):
+    """Get resources for a subject."""
+    init_resources()
     resources = []
     try:
         with open(RESOURCES_FILE, 'r') as f:
             reader = csv.DictReader(f)
-            resources = list(reader)
-            if subject:
-                resources = [r for r in resources if r['subject'] == subject]
+            for row in reader:
+                if row['subject'] == subject:
+                    resources.append(row)
+                    if len(resources) >= limit:
+                        break
     except:
         pass
     return resources
