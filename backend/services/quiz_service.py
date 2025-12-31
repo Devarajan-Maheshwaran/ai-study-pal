@@ -1,17 +1,10 @@
-from models.quiz_model import QuizModel
+from models.quiz_model import generate_mcqs, classify_difficulty
 
-quiz_model = QuizModel()
-
-def generate_adaptive_quiz(text, subject, difficulty='easy'):
-    quizzes = quiz_model.generate_quizzes(text, subject)
-    if difficulty == 'medium':
-        return quizzes
-    elif difficulty == 'easy':
-        return [q for q in quizzes if q['difficulty'] == 'easy']
-    return quizzes
-
-def evaluate_quiz(answers):
-    correct = sum(1 for a in answers if a.get('is_correct'))
-    total = len(answers)
-    accuracy = (correct / total * 100) if total > 0 else 0
-    return {'correct': correct, 'total': total, 'accuracy': accuracy}
+def create_quiz_from_notes(notes, subject, max_questions=5):
+    questions = generate_mcqs(notes, max_questions)
+    question_texts = [q['stem'] for q in questions]
+    difficulties = classify_difficulty(question_texts)
+    for i, q in enumerate(questions):
+        q['difficulty'] = difficulties[i] if i < len(difficulties) else 'medium'
+        q['subject'] = subject
+    return questions

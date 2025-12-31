@@ -1,9 +1,37 @@
-import { FormEvent, useState } from "react";
+import { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardContent, Button } from '../components/ui';
+
 const SettingsPage = () => {
-  const [userId, setUserId] = useState<string>("demo-user");
-  const [goalHours, setGoalHours] = useState<number>(2);
-  const [darkMode, setDarkMode] = useState<boolean>(false);
-  const handleSubmit = (e: FormEvent) => { e.preventDefault(); console.log("Settings saved", { userId, goalHours, darkMode }); };
-  return (<div className="space-y-6"><div><h2 className="text-xl font-semibold text-text">Settings</h2><p className="text-sm text-muted">Configure your study preferences and identity.</p></div><form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-border bg-card/80 p-4"><div className="grid gap-4 md:grid-cols-2"><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="userId">Student ID</label><input id="userId" className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={userId} onChange={(e) => setUserId(e.target.value)} /></div><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="goalHours">Daily study goal (hours)</label><input id="goalHours" type="number" min={1} max={12} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={goalHours} onChange={(e) => setGoalHours(Number(e.target.value) || 1)} /></div></div><label className="flex items-center gap-2 text-sm text-text"><input type="checkbox" className="h-3 w-3" checked={darkMode} onChange={(e) => setDarkMode(e.target.checked)} /><span>Use darker contrast mode</span></label><button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">Save settings</button></form></div>);
+  const [apiUrl, setApiUrl] = useState(localStorage.getItem('apiUrl') || '');
+
+  const handleSave = () => {
+    localStorage.setItem('apiUrl', apiUrl);
+    alert('Settings saved!');
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>API Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <input
+              value={apiUrl}
+              onChange={e => setApiUrl(e.target.value)}
+              placeholder="API Base URL"
+              className="w-full px-3 py-2 border rounded"
+            />
+            <Button onClick={handleSave}>
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
+
 export default SettingsPage;

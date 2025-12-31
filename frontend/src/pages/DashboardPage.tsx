@@ -1,14 +1,77 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getDashboard, getSubjects } from "../lib/api";
-import type { DashboardStats, Subject } from "../types/api";
-const DEFAULT_USER_ID = "demo-user";
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../lib/api'
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
+
 const DashboardPage = () => {
-  const [userId, setUserId] = useState<string>(DEFAULT_USER_ID);
-  const { data: dashboard, isLoading: dashboardLoading, isError: dashboardError, error: dashboardErrorObj, refetch: refetchDashboard } = useQuery<DashboardStats, Error>({ queryKey: ["dashboard", userId], queryFn: () => getDashboard(userId), enabled: Boolean(userId) });
-  const { data: subjects, isLoading: subjectsLoading, isError: subjectsError, error: subjectsErrorObj } = useQuery<Subject[], Error>({ queryKey: ["subjects"], queryFn: () => getSubjects() });
-  return (<div className="space-y-6"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-xl font-semibold text-text">Dashboard</h2><p className="text-sm text-muted">Track your progress and jump into practice quickly.</p></div><form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); refetchDashboard().catch(() => undefined); }}><div className="flex flex-col"><label htmlFor="userId" className="text-xs font-medium text-muted">Student ID</label><input id="userId" className="rounded-md border border-border bg-card px-3 py-1 text-sm text-text outline-none focus:border-primary" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="Enter your user ID" /></div><button type="submit" className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary/90">Refresh</button></form></div><div className="grid gap-4 md:grid-cols-4"><DashboardCard title="Subjects" value={dashboardLoading ? "Loading..." : dashboardError || !dashboard ? "--" : dashboard.totalSubjects.toString()} /><DashboardCard title="Quizzes taken" value={dashboardLoading || !dashboard ? "..." : dashboard.totalQuizzesTaken.toString()} /><DashboardCard title="Average score" value={dashboardLoading || !dashboard ? "..." : `${dashboard.averageScore.toFixed(1)}%`} /><DashboardCard title="Streak" value={dashboardLoading || !dashboard ? "..." : `${dashboard.streakDays ?? 0} days`} /></div>{dashboardError && (<p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{dashboardErrorObj?.message ?? "Failed to load dashboard."}</p>)}<section className="rounded-lg border border-border bg-card/80 p-4"><h3 className="mb-2 text-sm font-semibold text-text">Your subjects</h3>{subjectsLoading && <p className="text-xs text-muted">Loading subjects...</p>}{subjectsError && <p className="text-xs text-red-600">{subjectsErrorObj?.message ?? "Could not load subjects."}</p>}{!subjectsLoading && !subjectsError && (<ul className="grid gap-2 text-sm md:grid-cols-2 lg:grid-cols-3">{subjects?.map((s) => (<li key={s.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2"><span className="font-medium text-text">{s.name}</span><span className="text-[10px] uppercase tracking-wide text-muted">{s.id}</span></li>))}{subjects && subjects.length === 0 && <li className="text-xs text-muted">No subjects configured yet.</li>}</ul>)}</section></div>);
-};
-interface DashboardCardProps { title: string; value: string; }
-const DashboardCard = ({ title, value }: DashboardCardProps) => { return (<div className="rounded-lg border border-border bg-card/80 p-4"><p className="text-xs uppercase tracking-wide text-muted">{title}</p><p className="mt-1 text-xl font-semibold text-text">{value}</p></div>); };
-export default DashboardPage;
+  const [userId, setUserId] = useState('default_user')
+
+  const { data: dashboard, isLoading } = useQuery({
+    queryKey: ['dashboard', userId],
+    queryFn: () => api.getDashboard(userId),
+    enabled: !!userId
+  })
+
+  const stats = [
+    { title: 'Topics Studied', value: dashboard?.topics_studied || 0 },
+    { title: 'Total Attempts', value: dashboard?.total_attempts || 0 },
+    { title: 'Correct Answers', value: dashboard?.correct_answers || 0 },
+    { title: 'Avg Accuracy', value: `${dashboard?.avg_accuracy || 0}%` }
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <div className="flex items-center space-x-4">
+          <input
+            type="text"
+            placeholder="User ID"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader>
+              <CardTitle>{stat.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-blue-600">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Performance by Subject</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p>Loading...</p>
+          ) : (
+            <div className="space-y-4">
+              {dashboard?.per_subject?.map((subject) => (
+                <div key={subject.subject} className="flex justify-between items-center">
+                  <span className="font-medium">{subject.subject}</span>
+                  <div className="flex items-center space-x-4">
+                    <span>{subject.attempts} attempts</span>
+                    <span>{subject.correct} correct</span>
+                    <span className="text-green-600">{subject.avg_accuracy}%</span>
+                  </div>
+                </div>
+              )) || <p>No data available</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+export default DashboardPage

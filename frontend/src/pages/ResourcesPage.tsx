@@ -1,17 +1,89 @@
-import { FormEvent, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { downloadSchedule, getResources, getSubjects } from "../lib/api";
-import type { ResourcesResponse, Subject } from "../types/api";
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../lib/api'
+import { Card, CardHeader, CardTitle, CardContent, Button } from '../components/ui'
+
 const ResourcesPage = () => {
-  const [subjectId, setSubjectId] = useState<string>("");
-  const [limit, setLimit] = useState<number>(6);
-  const [hours, setHours] = useState<number>(10);
-  const { data: subjects } = useQuery<Subject[]>({ queryKey: ["subjects"], queryFn: () => getSubjects() });
-  const resourcesMutation = useMutation<ResourcesResponse, Error, { subjectId: string; limit: number }>({ mutationFn: ({ subjectId: sid, limit: lim }) => getResources(sid, lim) });
-  const scheduleMutation = useMutation<string, Error, { subjectId: string; hours: number }>({ mutationFn: ({ subjectId: sid, hours: hrs }) => downloadSchedule({ subjectId: sid, hours: hrs }) });
-  const handleLoadResources = (e: FormEvent) => { e.preventDefault(); if (!subjectId) return; resourcesMutation.mutate({ subjectId, limit }); };
-  const handleDownloadSchedule = () => { if (!subjectId) return; scheduleMutation.mutate({ subjectId, hours }, { onSuccess: (csvText) => { const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `study-schedule-${subjectId}.csv`; link.click(); URL.revokeObjectURL(url); } }); };
-  const resources = resourcesMutation.data;
-  return (<div className="space-y-6"><div><h2 className="text-xl font-semibold text-text">Resources & schedule</h2><p className="text-sm text-muted">Discover curated learning material and download a focused study schedule.</p></div><form onSubmit={handleLoadResources} className="space-y-4 rounded-lg border border-border bg-card/80 p-4"><div className="grid gap-4 md:grid-cols-4"><div className="flex flex-col gap-1 md:col-span-2"><label className="text-xs font-medium text-muted" htmlFor="subject">Subject</label><select id="subject" className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}><option value="">Select subject</option>{subjects?.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}</select></div><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="limit">Max resources</label><input id="limit" type="number" min={1} max={20} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={limit} onChange={(e) => setLimit(Number(e.target.value) || 1)} /></div><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="hours">Schedule hours</label><input id="hours" type="number" min={1} max={60} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} /></div></div><div className="flex flex-wrap gap-2"><button type="submit" disabled={resourcesMutation.isLoading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">{resourcesMutation.isLoading ? "Loading..." : "Load resources"}</button><button type="button" disabled={scheduleMutation.isLoading} onClick={handleDownloadSchedule} className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90 disabled:opacity-60">{scheduleMutation.isLoading ? "Preparing CSV..." : "Download schedule CSV"}</button></div>{(resourcesMutation.isError || scheduleMutation.isError) && (<p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{resourcesMutation.error?.message ?? scheduleMutation.error?.message ?? "Something went wrong."}</p>)}</form>{resources && (<section className="space-y-3 rounded-lg border border-border bg-card/80 p-4 text-sm"><h3 className="text-sm font-semibold text-text">Recommended resources ({resources.resources.length})</h3><div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{resources.resources.map((item) => (<a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="flex flex-col gap-1 rounded-md border border-border bg-background p-3 hover:border-primary"><span className="text-sm font-medium text-text">{item.title}</span><span className="text-[10px] uppercase tracking-wide text-muted">{item.type} {item.difficulty ? `• ${item.difficulty}` : ""}</span>{item.estimatedMinutes && <span className="text-[10px] text-muted">~{item.estimatedMinutes} min</span>}</a>))}</div></section>)}</div>);
-};
-export default ResourcesPage;
+  const [subject, setSubject] = useState('General')
+  const [limit, setLimit] = useState(10)
+
+  const { data: subjects } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: api.getSubjects
+  })
+
+  const { data: resourcesData, isLoading } = useQuery({
+    queryKey: ['resources', subject, limit],
+    queryFn: () => api.getResources(subject, limit)
+  })
+
+  const resources = resourcesData?.resources || []
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900">Study Resources</h1>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Filter Resources</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex space-x-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+              <select
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="all">All Subjects</option>
+                {subjects?.subjects.map((subj) => (
+                  <option key={subj} value={subj}>{subj}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Limit</label>
+              <select
+                value={limit}
+                onChange={(e) => setLimit(Number(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {isLoading ? (
+          <p>Loading resources...</p>
+        ) : resources.length > 0 ? (
+          resources.map((resource, index) => (
+            <Card key={index}>
+              <CardHeader>
+                <CardTitle className="text-lg">{resource.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-4">Type: {resource.type}</p>
+                <Button
+                  onClick={() => window.open(resource.url, '_blank')}
+                  className="w-full"
+                >
+                  View Resource
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <p className="col-span-full text-center text-gray-500">No resources found for this subject.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default ResourcesPage

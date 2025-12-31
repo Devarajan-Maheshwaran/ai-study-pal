@@ -1,15 +1,90 @@
-import { FormEvent, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { getSubjects, notesToMcqs } from "../lib/api";
-import type { NotesToMcqsRequest, NotesToMcqsResponse, Subject } from "../types/api";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { api, MCQ } from '../lib/api';
+import { Card, CardHeader, CardTitle, CardContent, Button } from '../components/ui';
+
 const NotesToMcqsPage = () => {
-  const [subjectId, setSubjectId] = useState<string>("");
-  const [notesText, setNotesText] = useState<string>("");
-  const [numQuestions, setNumQuestions] = useState<number>(5);
-  const [difficulty, setDifficulty] = useState<NotesToMcqsRequest["difficulty"]>("medium");
-  const { data: subjects } = useQuery<Subject[]>({ queryKey: ["subjects"], queryFn: () => getSubjects() });
-  const mutation = useMutation<NotesToMcqsResponse, Error, NotesToMcqsRequest>({ mutationFn: (payload) => notesToMcqs(payload) });
-  const handleSubmit = (e: FormEvent) => { e.preventDefault(); if (!subjectId || !notesText.trim()) { return; } mutation.mutate({ subjectId, notesText, numQuestions, difficulty }); };
-  return (<div className="space-y-6"><div><h2 className="text-xl font-semibold text-text">Notes → MCQs</h2><p className="text-sm text-muted">Paste your notes and let the system turn them into practice questions.</p></div><form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-border bg-card/80 p-4"><div className="grid gap-4 md:grid-cols-3"><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="subject">Subject</label><select id="subject" className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}><option value="">Select subject</option>{subjects?.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}</select></div><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="numQuestions">Number of questions</label><input id="numQuestions" type="number" min={1} max={20} className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={numQuestions} onChange={(e) => setNumQuestions(Number(e.target.value) || 1)} /></div><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="difficulty">Difficulty</label><select id="difficulty" className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={difficulty} onChange={(e) => setDifficulty(e.target.value as NotesToMcqsRequest["difficulty"])}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div></div><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="notes">Notes</label><textarea id="notes" className="h-40 rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={notesText} onChange={(e) => setNotesText(e.target.value)} placeholder="Paste your chapter notes here..." /></div><button type="submit" disabled={mutation.isLoading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">{mutation.isLoading ? "Generating..." : "Generate MCQs"}</button>{mutation.isError && (<p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{mutation.error.message}</p>)}</form>{mutation.data && (<section className="space-y-3 rounded-lg border border-border bg-card/80 p-4"><h3 className="text-sm font-semibold text-text">Generated questions ({mutation.data.questions.length})</h3><ol className="space-y-3 text-sm">{mutation.data.questions.map((q, index) => (<li key={q.id} className="rounded-md border border-border bg-background p-3"><p className="font-medium text-text">Q{index + 1}. {q.question}</p><ul className="mt-2 space-y-1">{q.options.map((opt) => (<li key={opt.id} className="flex items-start gap-2 text-muted"><span className="mt-[2px] h-1.5 w-1.5 rounded-full bg-primary" /><span>{opt.text}</span></li>))}</ul>{q.explanation && <p className="mt-2 text-xs text-muted">Hint: {q.explanation}</p>}</li>))}</ol></section>)}</div>);
+  const [subject, setSubject] = useState('');
+  const [notes, setNotes] = useState('');
+  const [questions, setQuestions] = useState<MCQ[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const { data: subjects } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: api.getSubjects
+  });
+
+  const mutation = useMutation({
+    mutationFn: api.notesToMcqs,
+    onSuccess: (data: { questions: MCQ[] }) => setQuestions(data.questions || [])
+  });
+
+  const handleGenerate = () => {
+    setLoading(true);
+    mutation.mutate(
+      {
+        source_type: 'notes',
+        subject,
+        notes,
+        max_questions: 5
+      },
+      {
+        onSettled: () => setLoading(false)
+      }
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900">Notes → MCQs</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Generate MCQs from Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <select value={subject} onChange={e => setSubject(e.target.value)} className="w-full px-3 py-2 border rounded">
+              <option value="">Select Subject</option>
+              {subjects?.subjects?.map((s: string) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Paste your notes here..."
+              className="w-full px-3 py-2 border rounded min-h-[120px]"
+            />
+            <Button onClick={handleGenerate} disabled={loading || !subject || !notes}>
+              {loading ? 'Generating...' : 'Generate MCQs'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      {questions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Generated MCQs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-4">
+              {questions.map(q => (
+                <li key={q.id}>
+                  <div className="font-medium mb-2">{q.question}</div>
+                  <ul className="list-disc ml-6">
+                    {q.options.map(opt => (
+                      <li key={opt}>{opt}</li>
+                    ))}
+                  </ul>
+                  <div className="text-green-700 mt-1">Answer: {q.answer}</div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 };
+
 export default NotesToMcqsPage;

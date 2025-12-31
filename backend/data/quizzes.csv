@@ -1,0 +1,4 @@
+user_id,subject,timestamp,correct,total,accuracy
+user123,AIML Fundamentals,2025-01-01T10:00:00,4,5,80
+user123,Python Basics,2025-01-02T11:00:00,3,5,60
+user456,Mathematics 101,2025-01-03T12:00:00,5,5,100

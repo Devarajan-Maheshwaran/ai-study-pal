@@ -1,18 +1,175 @@
-import { FormEvent, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { getAdaptiveQuiz, getSubjects, submitQuiz } from "../lib/api";
-import type { AdaptiveQuizResponse, Subject, SubmitQuizRequest, SubmitQuizResponse } from "../types/api";
-const DEFAULT_USER_ID = "demo-user";
+import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { api, QuizResult } from '../lib/api'
+import { Card, CardHeader, CardTitle, CardContent, Button } from '../components/ui'
+
 const AdaptiveQuizPage = () => {
-  const [userId, setUserId] = useState<string>(DEFAULT_USER_ID);
-  const [subjectId, setSubjectId] = useState<string>("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const { data: subjects } = useQuery<Subject[]>({ queryKey: ["subjects"], queryFn: () => getSubjects() });
-  const quizQuery = useMutation<AdaptiveQuizResponse, Error, { userId: string; subjectId: string }>({ mutationFn: ({ userId: uid, subjectId: sid }) => getAdaptiveQuiz(uid, sid) });
-  const submitMutation = useMutation<SubmitQuizResponse, Error, SubmitQuizRequest>({ mutationFn: (body) => submitQuiz(body) });
-  const handleStartQuiz = (e: FormEvent) => { e.preventDefault(); if (!userId || !subjectId) { return; } setAnswers({}); quizQuery.mutate({ userId, subjectId }); };
-  const handleSubmitQuiz = () => { if (!quizQuery.data) { return; } const payload: SubmitQuizRequest = { quizId: quizQuery.data.quizId, userId, answers: quizQuery.data.questions.map((q) => ({ questionId: q.id, selectedOptionId: answers[q.id] })) }; submitMutation.mutate(payload); };
-  const quiz = quizQuery.data;
-  return (<div className="space-y-6"><div><h2 className="text-xl font-semibold text-text">Adaptive Quiz</h2><p className="text-sm text-muted">Get a difficulty-adjusted quiz based on your performance.</p></div><form onSubmit={handleStartQuiz} className="space-y-4 rounded-lg border border-border bg-card/80 p-4"><div className="grid gap-4 md:grid-cols-3"><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="userId">Student ID</label><input id="userId" className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={userId} onChange={(e) => setUserId(e.target.value)} /></div><div className="flex flex-col gap-1"><label className="text-xs font-medium text-muted" htmlFor="subject">Subject</label><select id="subject" className="rounded-md border border-border bg-background px-3 py-2 text-sm text-text" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}><option value="">Select subject</option>{subjects?.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}</select></div></div><button type="submit" disabled={quizQuery.isLoading} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-60">{quizQuery.isLoading ? "Loading quiz..." : "Start quiz"}</button>{quizQuery.isError && (<p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{quizQuery.error.message}</p>)}</form>{quiz && (<section className="space-y-4 rounded-lg border border-border bg-card/80 p-4"><header className="flex items-center justify-between"><div><h3 className="text-sm font-semibold text-text">Current quiz</h3><p className="text-xs text-muted">{quiz.questions.length} questions • adaptive difficulty</p></div><button type="button" className="rounded-md border border-border px-3 py-1 text-xs text-muted hover:border-primary hover:text-primary" onClick={() => quizQuery.reset()}>Reset quiz</button></header><ol className="space-y-3 text-sm">{quiz.questions.map((q, idx) => (<li key={q.id} className="rounded-md border border-border bg-background p-3"><div className="flex items-center justify-between gap-2"><p className="font-medium text-text">Q{idx + 1}. {q.question}</p><span className="text-[10px] uppercase tracking-wide text-muted">{q.difficulty}</span></div><ul className="mt-2 space-y-1">{q.options.map((opt) => (<li key={opt.id} className="flex items-center gap-2"><input type="radio" id={`${q.id}-${opt.id}`} name={q.id} className="h-3 w-3 text-primary" checked={answers[q.id] === opt.id} onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt.id }))} /><label htmlFor={`${q.id}-${opt.id}`} className="cursor-pointer text-sm text-text">{opt.text}</label></li>))}</ul></li>))}</ol><button type="button" disabled={submitMutation.isLoading} onClick={handleSubmitQuiz} className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-white hover:bg-secondary/90 disabled:opacity-60">{submitMutation.isLoading ? "Submitting..." : "Submit quiz"}</button>{submitMutation.isError && (<p className="mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">{submitMutation.error.message}</p>)}{submitMutation.data && (<div className="mt-4 space-y-2 rounded-md border border-border bg-background p-3 text-sm"><p className="font-semibold text-text">Score: {submitMutation.data.score}/{submitMutation.data.totalQuestions}</p>{submitMutation.data.nextRecommendedDifficulty && <p className="text-xs text-muted">Next suggested difficulty: {submitMutation.data.nextRecommendedDifficulty}</p>}</div>)}</section>)}</div>);
-};
-export default AdaptiveQuizPage;
+  const [userId, setUserId] = useState('default_user')
+  const [subject, setSubject] = useState('')
+  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [showResults, setShowResults] = useState(false)
+  const [results, setResults] = useState<QuizResult | null>(null)
+
+  const { data: subjects } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: api.getSubjects
+  })
+
+  const { data: questions, refetch: refetchQuiz } = useQuery({
+    queryKey: ['quiz', userId, subject],
+    queryFn: () => api.getAdaptiveQuiz(userId, subject),
+    enabled: !!subject
+  })
+
+  const submitMutation = useMutation({
+    mutationFn: api.submitQuiz,
+    onSuccess: (data) => {
+      setResults(data)
+      setShowResults(true)
+    }
+  })
+
+  const handleStartQuiz = () => {
+    refetchQuiz()
+    setCurrentQuestion(0)
+    setAnswers({})
+    setShowResults(false)
+    setResults(null)
+  }
+
+  const handleAnswer = (questionId: string, answer: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: answer }))
+  }
+
+  const handleNext = () => {
+    if (currentQuestion < (questions?.length || 0) - 1) {
+      setCurrentQuestion(currentQuestion + 1)
+    } else {
+      handleSubmit()
+    }
+  }
+
+  const handleSubmit = () => {
+    if (!questions) return
+
+    const quizAnswers = questions.map(q => ({
+      question_id: q.id,
+      correct: answers[q.id] === q.answer
+    }))
+
+    submitMutation.mutate({
+      user_id: userId,
+      subject,
+      answers: quizAnswers
+    })
+  }
+
+  const currentQ = questions?.[currentQuestion]
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900">Adaptive Quiz</h1>
+
+      {!showResults && !questions && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Start Quiz</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">User ID</label>
+                <input
+                  type="text"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <select
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Select Subject</option>
+                  {subjects?.subjects.map((subj) => (
+                    <option key={subj} value={subj}>{subj}</option>
+                  ))}
+                </select>
+              </div>
+              <Button onClick={handleStartQuiz} disabled={!subject}>
+                Start Quiz
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!showResults && currentQ && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Question {currentQuestion + 1} of {questions.length}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">{currentQ.question}</h3>
+              <div className="space-y-2">
+                {currentQ.options.map((option, index) => (
+                  <label key={index} className="flex items-center">
+                    <input
+                      type="radio"
+                      name={`q-${currentQ.id}`}
+                      value={option}
+                      checked={answers[currentQ.id] === option}
+                      onChange={() => handleAnswer(currentQ.id, option)}
+                      className="mr-3"
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Difficulty: {currentQ.difficulty}</span>
+                <Button onClick={handleNext} disabled={!answers[currentQ.id]}>
+                  {currentQuestion < (questions.length - 1) ? 'Next' : 'Submit'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {showResults && results && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Quiz Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">
+                  {results.correct} / {results.total}
+                </p>
+                <p className="text-lg text-gray-600">
+                  Accuracy: {results.accuracy}%
+                </p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Feedback</h4>
+                <p>{results.feedback}</p>
+              </div>
+              <Button onClick={() => setShowResults(false)}>
+                Take Another Quiz
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+export default AdaptiveQuizPage

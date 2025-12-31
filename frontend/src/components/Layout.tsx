@@ -1,55 +1,44 @@
-import { PropsWithChildren } from 'react';
-import { Link } from 'react-router-dom';
-import Aurora from './Aurora';
-import NavLink from './ui/NavLink';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 
-const Layout = ({ children }: PropsWithChildren) => {
+const navLinks = [
+  { to: '/', label: 'Dashboard' },
+  { to: '/notes-to-mcqs', label: 'Notes→MCQs' },
+  { to: '/quiz', label: 'Quiz' },
+  { to: '/revision', label: 'Revision' },
+  { to: '/resources', label: 'Resources' },
+  { to: '/settings', label: 'Settings' },
+];
+
+export default function Layout() {
+  const location = useLocation();
   return (
-    <div className="min-h-screen bg-background text-text">
-      <Aurora />
-      <div className="flex h-screen">
-        <aside className="flex w-64 flex-col border-r border-border bg-card/80 backdrop-blur">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-4">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white font-semibold">
-              SP
-            </span>
-            <div>
-              <h1 className="text-sm font-semibold text-text">AI Study Pal</h1>
-              <p className="text-xs text-muted">Your smart study partner</p>
-            </div>
-          </div>
-          <nav className="flex-1 space-y-1 px-2 py-4 text-sm">
-            <NavLink to="/" label="Dashboard" />
-            <NavLink to="/notes-to-mcqs" label="Notes → MCQs" />
-            <NavLink to="/adaptive-quiz" label="Adaptive Quiz" />
-            <NavLink to="/study-tips" label="Revision Summary" />
-            <NavLink to="/resources" label="Resources" />
-            <NavLink to="/settings" label="Settings" />
-          </nav>
-          <div className="border-t border-border px-4 py-3 text-xs text-muted">
-            © {new Date().getFullYear()} AI Study Pal
-          </div>
-        </aside>
-        <main className="flex-1 overflow-y-auto bg-background/80">
-          <header className="flex items-center justify-between border-b border-border px-6 py-4">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted">Capstone project</p>
-              <p className="text-sm text-text">
-                Built with Flask, React, and **AI**-powered helpers.
-              </p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-yellow-900 via-black to-black relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-yellow-700/40 via-black/80 to-black z-0" />
+      <header className="w-full flex items-center px-6 py-4 bg-black/80 backdrop-blur shadow z-10 relative border-b border-yellow-900">
+        <span className="font-bold text-2xl text-yellow-400 mr-8 tracking-tight">AI Study Pal</span>
+        <nav className="flex gap-4">
+          {navLinks.map(link => (
             <Link
-              to="/settings"
-              className="rounded-md border border-border px-3 py-1 text-xs text-muted hover:border-primary hover:text-primary"
+              key={link.to}
+              to={link.to}
+              className={`font-medium px-2 py-1 rounded transition-colors duration-200
+                ${location.pathname === link.to ? 'bg-yellow-500 text-black' : 'text-yellow-200 hover:bg-yellow-800/60 hover:text-yellow-300'}`}
             >
-              Student profile
+              {link.label}
             </Link>
-          </header>
-          <div className="px-6 py-6">{children}</div>
-        </main>
-      </div>
+          ))}
+        </nav>
+      </header>
+      <main className="relative z-10 px-4 py-8 max-w-3xl mx-auto">
+        <div className="rounded-xl bg-black/80 shadow-lg p-6 border border-yellow-900">
+          <Outlet />
+        </div>
+      </main>
+      <footer className="w-full text-center py-4 text-yellow-700 text-xs bg-black/80 border-t border-yellow-900 z-10 relative">
+        © {new Date().getFullYear()} AI Study Pal
+      </footer>
     </div>
   );
-};
+}
 
-export default Layout;
+// removed duplicate default export

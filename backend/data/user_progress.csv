@@ -1,0 +1,5 @@
+
+user_id,subject,total_attempts,correct_answers,avg_accuracy
+user123,AIML Fundamentals,5,4,80
+user123,Python Basics,3,2,67
+user456,Mathematics 101,2,2,100
