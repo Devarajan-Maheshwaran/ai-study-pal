@@ -8,14 +8,13 @@ from datetime import datetime
 from io import StringIO
 
 from models.quiz_model import train_quiz_models, classify_difficulty, generate_mcqs
-from models.summarizer_model import summarize_text
+from services.summary_service import generate_summary
 from models.nlp_utils import extract_keywords, generate_study_tips
 from models.feedback_model import generate_feedback_text
-from services.text_extraction import parse_text, parse_pdf, parse_url, parse_youtube
-from services.notes_service import parse_text, parse_pdf, parse_url, parse_youtube
+from services.notes_service import parse_text, parse_pdf, parse_url, parse_youtube, parse_source
 from services.quiz_service import generate_mcqs
 from services.summary_service import summarize_text
-from services.schedule_service import generate_schedule_csv
+from services.schedule_service import generate_study_schedule_csv
 from services.resources_service import get_resources
 from services.subject_service import (
     get_available_subjects,
@@ -72,49 +71,23 @@ def create_app():
     @app.route('/api/notes-to-mcqs', methods=['POST'])
     def notes_to_mcqs():
         try:
-            if 'file' in request.files:
-                file = request.files['file']
-                if file.filename == '':
-                    return jsonify({"error": "No file selected"}), 400
+            text = ''
+            data = request.form if request.form else (request.get_json() or {})
+            source_type = data.get('source_type', 'text')
+            subject = data.get('subject', 'General')
+            max_questions = int(data.get('max_questions', 5))
+            file = request.files.get('file') if 'file' in request.files else None
+            url = data.get('url', '')
+            youtube_url = data.get('youtube_url', '')
 
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-
-                text = parse_pdf(filepath)
-                try:
-                    os.remove(filepath)
-                except:
-                    pass
-            else:
-                data = request.get_json() or {}
-                source_type = data.get('source_type', 'text')
-
-                if source_type == 'text':
-                    text = data.get('notes', '')
-                elif source_type == 'url':
-                    text = parse_url(data.get('url', ''))
-                elif source_type == 'youtube':
-                    text = parse_youtube(data.get('youtube_url', ''))
-                else:
-                    text = data.get('notes', '')
-
-            subject = data.get('subject', 'General') if isinstance(data, dict) else request.form.get('subject', 'General')
-            max_questions = int(data.get('max_questions', 5) if isinstance(data, dict) else request.form.get('max_questions', 5))
+            text = parse_source(source_type, notes=data.get('notes', ''), url=url, youtube_url=youtube_url, file=file)
 
             if not text or len(text.strip()) < 20:
                 return jsonify({"error": "Text too short or empty"}), 400
 
-            questions = generate_mcqs(text, max_questions)
-            question_texts = [q['stem'] for q in questions]
-            difficulties = classify_difficulty(question_texts)
-
-            for i, q in enumerate(questions):
-                q['difficulty'] = difficulties[i] if i < len(difficulties) else 'medium'
-                q['subject'] = subject
-
+            from services.quiz_service import create_quiz_from_notes
+            questions = create_quiz_from_notes(text, subject, max_questions)
             return jsonify({"questions": questions, "count": len(questions)}), 200
-
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -161,18 +134,20 @@ def create_app():
     @app.route('/api/revision-summary', methods=['POST'])
     def revision_summary():
         try:
-            data = request.get_json()
-            text = data.get('text', '')
+            data = request.form if request.form else (request.get_json() or {})
+            source_type = data.get('source_type', 'text')
             subject = data.get('subject', 'General')
-            max_sentences = int(data.get('max_sentences', 5))
+            file = request.files.get('file') if 'file' in request.files else None
+            url = data.get('url', '')
+            youtube_url = data.get('youtube_url', '')
+            # For last minute revision, do not use max_sentences from user
+            text = parse_source(source_type, notes=data.get('notes', ''), url=url, youtube_url=youtube_url, file=file)
 
             if not text or len(text.strip()) < 20:
                 return jsonify({"error": "Text too short or empty"}), 400
 
-            summary = summarize_text(text, max_sentences)
-            keywords = extract_keywords(text, num_keywords=5)
-            tips = generate_study_tips(keywords, subject)
-
+            # Use a fixed number of sentences for last minute revision
+            summary, tips = generate_summary(text, subject, max_sentences=7)
             return jsonify({
                 "summary": summary,
                 "tips": tips
@@ -180,14 +155,39 @@ def create_app():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @app.route('/api/resources', methods=['GET'])
+    @app.route('/api/resources', methods=['POST'])
     def get_resources_endpoint():
         try:
-            subject = request.args.get('subject', 'General')
-            limit = int(request.args.get('limit', 10))
-
-            resources = get_resources(subject, limit)
-            return jsonify({"resources": resources}), 200
+            data = request.form if request.form else (request.get_json() or {})
+            subject = data.get('subject', 'General')
+            url = data.get('url', '')
+            youtube_url = data.get('youtube_url', '')
+            source_type = data.get('source_type', 'text')
+            file = request.files.get('file') if 'file' in request.files else None
+            # If YouTube or PDF, extract text and return as a resource
+            resources = get_resources(subject, 10)
+            extra_resources = []
+            if source_type == 'pdf' and file:
+                text = parse_pdf(file)
+                if text:
+                    extra_resources.append({
+                        'subject': subject,
+                        'title': 'Uploaded PDF Content',
+                        'url': '',
+                        'type': 'pdf',
+                        'content': text[:500]
+                    })
+            elif source_type == 'youtube' and youtube_url:
+                yt_text = parse_youtube(youtube_url)
+                if yt_text:
+                    extra_resources.append({
+                        'subject': subject,
+                        'title': 'YouTube Video Content',
+                        'url': youtube_url,
+                        'type': 'youtube',
+                        'content': yt_text[:500]
+                    })
+            return jsonify({"resources": resources + extra_resources}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -198,7 +198,7 @@ def create_app():
             hours = int(request.args.get('hours', 10))
             scenario = request.args.get('scenario', 'exam_prep')
 
-            csv_data = generate_schedule_csv(subject, hours, scenario)
+            csv_data = generate_study_schedule_csv(subject, hours, scenario)
 
             return csv_data, 200, {
                 'Content-Disposition': f'attachment; filename=study-schedule-{subject}.csv',
@@ -206,6 +206,46 @@ def create_app():
             }
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+    # --- ROUTE ALIASES FOR FRONTEND COMPATIBILITY ---
+    @app.route('/api/summarize', methods=['POST'])
+    def summarize_alias():
+        return revision_summary()
+
+    @app.route('/api/mcqs', methods=['POST'])
+    def mcqs_alias():
+        return notes_to_mcqs()
+
+    @app.route('/api/quiz/adaptive', methods=['POST'])
+    def quiz_adaptive_alias():
+        data = request.get_json() or {}
+        user_id = data.get('user_id', 'default_user')
+        subject = data.get('subject', 'General')
+        difficulty = data.get('difficulty', None)
+        questions = get_quiz_questions(user_id, subject, difficulty)
+        return jsonify({"questions": questions}), 200
+
+    @app.route('/api/progress', methods=['GET'])
+    def get_progress():
+        user_id = request.args.get('user_id', 'default_user')
+        data = get_user_dashboard(user_id)
+        # Transform data to match ProgressResponse expected by frontend
+        average_accuracy = data.get('average_accuracy', 0)
+        total_quiz_attempts = data.get('total_quiz_attempts', 0)
+        subject_stats = [
+            {
+                'subjectName': s.get('subject', ''),
+                'accuracy': s.get('accuracy', 0),
+                'quizAttempts': s.get('quiz_attempts', 0),
+                'color': s.get('color', None)
+            }
+            for s in data.get('subjects', [])
+        ]
+        return jsonify({
+            'averageAccuracy': average_accuracy,
+            'totalQuizAttempts': total_quiz_attempts,
+            'subjectStats': subject_stats
+        }), 200
 
     return app
 

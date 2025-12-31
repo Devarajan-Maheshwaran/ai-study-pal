@@ -86,23 +86,17 @@ def save_user_progress(user_id, subject, correct, total, accuracy):
         writer.writerow([user_id, subject, correct, total, round(accuracy, 2), datetime.now().isoformat()])
 
 def get_quiz_questions(user_id, subject, difficulty=None):
-    # Simple adaptive quiz: return some questions
-    questions = [
-        {
-            'id': '1',
-            'stem': 'What is machine learning?',
-            'options': ['A type of AI', 'A programming language', 'A database', 'A web framework'],
-            'answer': 'A type of AI',
-            'difficulty': 'easy',
+    # Generate MCQs from sample text for the subject
+    text = SAMPLE_TEXTS.get(subject, SAMPLE_TEXTS['General'])
+    mcqs = generate_mcqs(text, num_questions=5)
+    questions = []
+    for i, mcq in enumerate(mcqs):
+        questions.append({
+            'id': str(i+1),
+            'stem': mcq['question'],
+            'options': mcq['options'],
+            'answer': mcq['answer'],
+            'difficulty': mcq.get('difficulty', 'medium'),
             'topic': subject
-        },
-        {
-            'id': '2',
-            'stem': 'Explain supervised learning.',
-            'options': ['Learning with labeled data', 'Learning without data', 'Learning with images', 'Learning with text'],
-            'answer': 'Learning with labeled data',
-            'difficulty': 'medium',
-            'topic': subject
-        }
-    ]
+        })
     return questions

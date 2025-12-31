@@ -1,6 +1,8 @@
 import requests
 from PyPDF2 import PdfReader
 from io import BytesIO
+import os
+import re
 
 def parse_text(notes):
     return notes if notes else ""
@@ -26,8 +28,24 @@ def parse_url(url):
         return ""
 
 def parse_youtube(youtube_url):
-    """Extract transcript from YouTube (stub)."""
-    return "YouTube video content. Please add transcript API key."
+    """Extract transcript/title/description from YouTube using API key."""
+    api_key = os.environ.get('YOUTUBE_API_KEY', '')
+    video_id = None
+    match = re.search(r'v=([\w-]+)', youtube_url)
+    if match:
+        video_id = match.group(1)
+    if not video_id or not api_key:
+        return ''
+    # Try to get video details
+    url = f'https://www.googleapis.com/youtube/v3/videos?id={video_id}&key={api_key}&part=snippet'
+    resp = requests.get(url)
+    if resp.status_code == 200:
+        data = resp.json()
+        items = data.get('items', [])
+        if items:
+            snippet = items[0]['snippet']
+            return snippet.get('title', '') + ' ' + snippet.get('description', '')
+    return ''
 
 def parse_source(source_type, notes=None, url=None, youtube_url=None, file=None):
     """Parse different source types."""
