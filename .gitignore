@@ -1,1 +1,25 @@
 node_modules
+
+# Sensitive
+.env
+.env.local
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pkl
+backend/__pycache__/
+backend/models/__pycache__/
+backend/services/__pycache__/
+
+# Build output
+dist/
+build/
+.vite/
+
+# Logs
+*.log

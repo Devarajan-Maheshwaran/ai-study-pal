@@ -3,7 +3,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, BookOpen, Brain, Target, TrendingUp, Award, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { api, ProgressResponse } from '@/lib/apiClient';
+import { api } from '@/lib/apiClient';
+import type { ProgressResponse } from '@/lib/apiClient';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const ProgressAnalyticsSection = () => {
