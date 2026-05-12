@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAppState } from '@/hooks/useAppState';
-import { GraduationCap, FileText, Brain, Lightbulb, BookOpen, BarChart3, Settings, ChevronDown, Plus, AlertCircle } from 'lucide-react';
+import { GraduationCap, FileText, Brain, Lightbulb, BookOpen, BarChart3, Settings, Plus, AlertCircle, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import StudyInputSection from '@/components/dashboard/StudyInputSection';
@@ -14,6 +14,7 @@ import AdaptiveQuizSection from '@/components/dashboard/AdaptiveQuizSection';
 import ResourceFinderSection from '@/components/dashboard/ResourceFinderSection';
 import ProgressAnalyticsSection from '@/components/dashboard/ProgressAnalyticsSection';
 import SettingsSection from '@/components/dashboard/SettingsSection';
+import CopilotSection from '@/components/dashboard/CopilotSection';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type InputSource = 'text' | 'pdf' | 'youtube' | null;
@@ -25,16 +26,18 @@ interface InputStatus {
 }
 
 const UnifiedDashboard = () => {
-  const { subjects, currentSubjectId, setCurrentSubject, addSubject, deleteSubject, getCurrentSubject } = useAppState();
+  const { subjects, currentSubjectId, setCurrentSubject, addSubject, getCurrentSubject } = useAppState();
   const [studyContent, setStudyContent] = useState('');
   const [inputStatus, setInputStatus] = useState<InputStatus>({ source: null, details: '', wordCount: 0 });
   const [activeTab, setActiveTab] = useState('summarizer');
   const [isAddingSubject, setIsAddingSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
+  // Persist copilot context from quiz results
+  const [weakTopics, setWeakTopics] = useState<string[]>([]);
+  const [lastScore, setLastScore] = useState<number | undefined>();
 
   const currentSubject = getCurrentSubject();
 
-  // Update input status when content changes
   useEffect(() => {
     if (studyContent) {
       setInputStatus(prev => ({
@@ -46,13 +49,9 @@ const UnifiedDashboard = () => {
     }
   }, [studyContent]);
 
-  const handleContentChange = (content: string, source: InputSource = 'text', details: string = '') => {
+  const handleContentChange = (content: string, source: InputSource = 'text', details = '') => {
     setStudyContent(content);
-    setInputStatus({
-      source,
-      details,
-      wordCount: content.split(/\s+/).filter(Boolean).length,
-    });
+    setInputStatus({ source, details, wordCount: content.split(/\s+/).filter(Boolean).length });
   };
 
   const handleAddSubject = () => {
@@ -63,27 +62,21 @@ const UnifiedDashboard = () => {
     }
   };
 
-  // Reset results when subject changes
-  const handleSubjectChange = (subjectId: string) => {
-    setCurrentSubject(subjectId);
-    // Content persists but results should be regenerated for new subject
-  };
-
   const tabs = [
     { id: 'summarizer', label: 'Summarizer', icon: Lightbulb },
-    { id: 'mcq', label: 'MCQ Generator', icon: FileText },
+    { id: 'mcq', label: 'MCQ', icon: FileText },
     { id: 'quiz', label: 'Adaptive Quiz', icon: Brain },
     { id: 'resources', label: 'Resources', icon: BookOpen },
     { id: 'progress', label: 'Progress', icon: BarChart3 },
+    { id: 'copilot', label: 'Copilot', icon: Bot },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   const hasContent = studyContent.trim().length > 0;
-  const hasSubject = currentSubjectId !== null;
+  const subjectName = currentSubject?.name || 'General';
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
@@ -91,15 +84,15 @@ const UnifiedDashboard = () => {
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-heading text-xl font-bold text-foreground">AI Study Assistant</h1>
-              <p className="text-xs text-muted-foreground">Local NLP-powered study companion</p>
+              <h1 className="font-heading text-xl font-bold text-foreground">AI Study Pal</h1>
+              <p className="text-xs text-muted-foreground">10 trained ML models · No external APIs</p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="container py-6 space-y-6">
-        {/* Subject Selection Card */}
+        {/* Subject Bar */}
         <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5">
           <CardContent className="pt-4 pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -109,12 +102,9 @@ const UnifiedDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Current Subject</p>
-                  <p className="font-heading font-semibold text-foreground">
-                    {currentSubject?.name || 'No subject selected'}
-                  </p>
+                  <p className="font-heading font-semibold text-foreground">{subjectName}</p>
                 </div>
               </div>
-              
               <div className="flex items-center gap-2">
                 {isAddingSubject ? (
                   <div className="flex items-center gap-2">
@@ -131,19 +121,16 @@ const UnifiedDashboard = () => {
                   </div>
                 ) : (
                   <>
-                    <Select value={currentSubjectId || ''} onValueChange={handleSubjectChange}>
+                    <Select value={currentSubjectId || ''} onValueChange={setCurrentSubject}>
                       <SelectTrigger className="w-[200px] bg-background">
                         <SelectValue placeholder="Select subject" />
                       </SelectTrigger>
                       <SelectContent>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.id}>
+                        {subjects.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
                             <div className="flex items-center gap-2">
-                              <span
-                                className="h-2 w-2 rounded-full"
-                                style={{ backgroundColor: subject.color }}
-                              />
-                              {subject.name}
+                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+                              {s.name}
                             </div>
                           </SelectItem>
                         ))}
@@ -156,88 +143,65 @@ const UnifiedDashboard = () => {
                 )}
               </div>
             </div>
-
-            {/* Status Info Line */}
             {inputStatus.source && (
               <div className="mt-3 pt-3 border-t border-border/50">
-                <div className="flex items-center gap-4 text-sm">
-                  <Badge variant="secondary" className="font-normal">
-                    Source: {inputStatus.source.toUpperCase()}
-                  </Badge>
-                  {inputStatus.details && (
-                    <span className="text-muted-foreground">{inputStatus.details}</span>
-                  )}
+                <div className="flex items-center gap-4 text-sm flex-wrap">
+                  <Badge variant="secondary">Source: {inputStatus.source.toUpperCase()}</Badge>
+                  {inputStatus.details && <span className="text-muted-foreground text-xs">{inputStatus.details}</span>}
                   <span className="text-muted-foreground">{inputStatus.wordCount} words loaded</span>
-                  <span className="text-muted-foreground text-xs ml-auto">
-                    All tools below use this subject + material
-                  </span>
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Validation Alerts */}
-        {!hasSubject && (
-          <Alert variant="default" className="border-warning/50 bg-warning/5">
-            <AlertCircle className="h-4 w-4 text-warning" />
-            <AlertDescription className="text-warning">
-              Please select a subject first to save your progress and enable all features.
-            </AlertDescription>
+        {!currentSubjectId && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>Add and select a subject to track your progress across sessions.</AlertDescription>
           </Alert>
         )}
 
-        {/* Study Input Section */}
-        <section className="animate-fade-in">
-          <StudyInputSection 
-            studyContent={studyContent}
-            onContentChange={handleContentChange}
-          />
-        </section>
+        <StudyInputSection studyContent={studyContent} onContentChange={handleContentChange} />
 
-        {/* Feature Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="animate-slide-up">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 h-auto gap-2 bg-transparent p-0 mb-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full h-auto gap-1.5 bg-transparent p-0 mb-6" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
                 value={tab.id}
-                className="flex items-center gap-2 rounded-xl border-2 border-border bg-card px-4 py-3 data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all hover:border-primary/50"
+                className="flex items-center gap-1.5 rounded-xl border-2 border-border bg-card px-3 py-2.5 data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all hover:border-primary/40"
               >
-                <tab.icon className="h-4 w-4" />
-                <span className="hidden sm:inline text-sm font-medium">{tab.label}</span>
+                <tab.icon className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline text-xs font-medium">{tab.label}</span>
               </TabsTrigger>
             ))}
           </TabsList>
 
-          <TabsContent value="summarizer" className="animate-fade-in">
-            <SummarizerSection 
-              studyContent={studyContent} 
-              inputSource={inputStatus.source}
-              subjectName={currentSubject?.name || 'General'}
-            />
+          <TabsContent value="summarizer">
+            <SummarizerSection studyContent={studyContent} inputSource={inputStatus.source} subjectName={subjectName} />
           </TabsContent>
-
-          <TabsContent value="mcq" className="animate-fade-in">
-            <MCQGeneratorSection 
-              studyContent={studyContent}
-              inputSource={inputStatus.source}
-            />
+          <TabsContent value="mcq">
+            <MCQGeneratorSection studyContent={studyContent} inputSource={inputStatus.source} />
           </TabsContent>
-
-          <TabsContent value="quiz" className="animate-fade-in">
+          <TabsContent value="quiz">
             <AdaptiveQuizSection />
           </TabsContent>
-
-          <TabsContent value="resources" className="animate-fade-in">
+          <TabsContent value="resources">
             <ResourceFinderSection />
           </TabsContent>
-
-          <TabsContent value="progress" className="animate-fade-in">
+          <TabsContent value="progress">
             <ProgressAnalyticsSection />
           </TabsContent>
-
-          <TabsContent value="settings" className="animate-fade-in">
+          <TabsContent value="copilot">
+            <CopilotSection
+              subjectName={subjectName}
+              weakTopics={weakTopics}
+              lastScore={lastScore}
+              recentSummary={studyContent.slice(0, 500)}
+            />
+          </TabsContent>
+          <TabsContent value="settings">
             <SettingsSection />
           </TabsContent>
         </Tabs>
