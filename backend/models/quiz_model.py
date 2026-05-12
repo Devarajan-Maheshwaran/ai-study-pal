@@ -1,138 +1,189 @@
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.cluster import KMeans
-import pickle
 import os
+import re
 import random
+import pickle
 from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.linear_model import LogisticRegression
+import nltk
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'quiz_model.pkl')
-VECTORIZER_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'vectorizer.pkl')
-KMEANS_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'kmeans_model.pkl')
-TFIDF_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tfidf_vectorizer.pkl')
+for pkg in ["punkt", "stopwords", "averaged_perceptron_tagger", "punkt_tab"]:
+    try:
+        nltk.download(pkg, quiet=True)
+    except:
+        pass
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "quiz_model.pkl")
+VECTORIZER_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "vectorizer.pkl")
+
 
 def train_quiz_models():
-    """Train models for difficulty classification."""
-    easy = ["What is 2+2?", "What is the capital of France?", "Define photosynthesis?"]
-    medium = ["Explain evolution?", "Describe quantum mechanics?", "What is mitosis?"]
-    
-    all_texts = easy + medium
-    all_labels = [0]*len(easy) + [1]*len(medium)
-    
+    """Train logistic regression difficulty classifier."""
+    easy = [
+        "What is the capital of France?",
+        "Define photosynthesis.",
+        "What is 2 + 2?",
+        "Name the largest planet.",
+        "What is water made of?",
+        "Who wrote Romeo and Juliet?",
+        "What is the boiling point of water?",
+        "Name a primary color.",
+    ]
+    medium = [
+        "Explain the process of mitosis in detail.",
+        "Describe how quantum entanglement works.",
+        "What are the key differences between TCP and UDP?",
+        "Explain the concept of entropy in thermodynamics.",
+        "How does the immune system respond to pathogens?",
+        "Describe the mechanism of action potential in neurons.",
+        "Explain the significance of the Krebs cycle.",
+        "What is the role of RNA in protein synthesis?",
+    ]
+    hard = [
+        "Critically analyze the implications of Godel incompleteness theorems on formal systems.",
+        "Derive the Schrodinger equation from first principles and explain its physical interpretation.",
+        "Compare and contrast various sorting algorithm complexities and their real-world trade-offs.",
+        "Explain how gradient descent optimization works in the context of deep neural networks.",
+        "Analyze the computational complexity of NP-hard problems and implications for cryptography.",
+    ]
+    texts = easy + medium + hard
+    labels = [0] * len(easy) + [1] * len(medium) + [2] * len(hard)
+
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    
-    vectorizer = CountVectorizer(max_features=100)
-    X = vectorizer.fit_transform(all_texts)
-    model = LogisticRegression(random_state=42, max_iter=200)
-    model.fit(X, all_labels)
-    
-    with open(MODEL_PATH, 'wb') as f:
+    vec = CountVectorizer(max_features=200, ngram_range=(1, 2))
+    X = vec.fit_transform(texts)
+    model = LogisticRegression(random_state=42, max_iter=500, C=1.0)
+    model.fit(X, labels)
+
+    with open(MODEL_PATH, "wb") as f:
         pickle.dump(model, f)
-    with open(VECTORIZER_PATH, 'wb') as f:
-        pickle.dump(vectorizer, f)
-    
-    return model, vectorizer
+    with open(VECTORIZER_PATH, "wb") as f:
+        pickle.dump(vec, f)
+    return model, vec
+
 
 def load_quiz_models():
-    """Load or train models."""
     if not os.path.exists(MODEL_PATH):
         return train_quiz_models()
-    with open(MODEL_PATH, 'rb') as f:
+    with open(MODEL_PATH, "rb") as f:
         model = pickle.load(f)
-    with open(VECTORIZER_PATH, 'rb') as f:
-        vectorizer = pickle.load(f)
-    return model, vectorizer
+    with open(VECTORIZER_PATH, "rb") as f:
+        vec = pickle.load(f)
+    return model, vec
 
-def classify_difficulty(questions):
-    """Classify difficulty of questions."""
+
+def classify_difficulty(questions: list[str]) -> list[str]:
+    """Return easy/medium/hard for each question string."""
     try:
-        model, vectorizer = load_quiz_models()
-        X = vectorizer.transform(questions)
+        model, vec = load_quiz_models()
+        X = vec.transform(questions)
         preds = model.predict(X)
-        return ["easy" if p == 0 else "medium" for p in preds]
-    except:
-        return ["easy"] * len(questions)
+        mapping = {0: "easy", 1: "medium", 2: "hard"}
+        return [mapping[p] for p in preds]
+    except Exception as e:
+        print(f"[DIFFICULTY ERROR] {e}")
+        return ["medium"] * len(questions)
 
-def train_kmeans_model():
-    """Train KMeans for topic clustering using training data."""
-    import csv
-    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'topic_training_data.csv')
-    sample_texts = []
-    with open(data_path, 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            sample_texts.append(row['text'])
 
-    tfidf = TfidfVectorizer(max_features=100, stop_words='english')
-    X = tfidf.fit_transform(sample_texts)
-
-    kmeans = KMeans(n_clusters=4, random_state=42)
-    kmeans.fit(X)
-
-    KMEANS_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'kmeans_model.pkl')
-    TFIDF_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tfidf_vectorizer.pkl')
-
-    with open(KMEANS_PATH, 'wb') as f:
-        pickle.dump(kmeans, f)
-    with open(TFIDF_PATH, 'wb') as f:
-        pickle.dump(tfidf, f)
-
-    return kmeans, tfidf
-
-def load_kmeans_model():
-    """Load or train KMeans model."""
-    if not os.path.exists(KMEANS_PATH):
-        return train_kmeans_model()
-    with open(KMEANS_PATH, 'rb') as f:
-        kmeans = pickle.load(f)
-    with open(TFIDF_PATH, 'rb') as f:
-        tfidf = pickle.load(f)
-    return kmeans, tfidf
-
-def generate_mcqs(text, num_questions=5):
-    """Generate multiple choice questions from text."""
+def _extract_key_sentences(text: str, n: int) -> list[str]:
+    """Return top-n TF-IDF scored sentences."""
+    sentences = sent_tokenize(text)
+    sentences = [s.strip() for s in sentences if len(s.split()) >= 6]
+    if not sentences:
+        return []
+    tfidf = TfidfVectorizer(stop_words="english")
     try:
-        sentences = sent_tokenize(text)
-        if len(sentences) < 3:
-            return []
+        matrix = tfidf.fit_transform(sentences)
+        scores = matrix.sum(axis=1).A1
+        top_idx = scores.argsort()[::-1][:n * 2]
+        return [sentences[i] for i in top_idx]
+    except Exception:
+        return sentences[:n * 2]
 
-        # Extract key sentences
-        tfidf = TfidfVectorizer(max_features=50, stop_words='english')
-        tfidf_matrix = tfidf.fit_transform(sentences)
-        scores = tfidf_matrix.sum(axis=1).A1
-        top_indices = scores.argsort()[-min(num_questions*2, len(sentences)):][::-1]
+
+def _make_distractors(correct: str, all_words: list[str], n: int = 3) -> list[str]:
+    """Generate plausible wrong answer options from the text vocabulary."""
+    stop = set(stopwords.words("english"))
+    candidates = [
+        w for w in all_words
+        if w.lower() != correct.lower()
+        and w.lower() not in stop
+        and len(w) > 3
+        and w.isalpha()
+    ]
+    candidates = list(dict.fromkeys(candidates))  # deduplicate preserving order
+    random.shuffle(candidates)
+    distractors = candidates[:n]
+    while len(distractors) < n:
+        distractors.append(f"None of the above")
+    return distractors
+
+
+def generate_mcqs(text: str, num_questions: int = 5) -> list[dict]:
+    """
+    Generate MCQs using fill-in-the-blank pattern.
+    Each question blanks out a key noun/concept from a sentence.
+    """
+    try:
+        key_sentences = _extract_key_sentences(text, num_questions)
+        all_words = word_tokenize(text)
+        stop = set(stopwords.words("english"))
+
+        # Extract noun-like words as answer candidates
+        content_words = [
+            w for w in all_words
+            if w.lower() not in stop and len(w) > 3 and w.isalpha()
+        ]
 
         questions = []
-        for idx in top_indices[:num_questions]:
-            sentence = sentences[idx].strip()
-            if len(sentence.split()) < 5:
+        used_answers = set()
+
+        for sentence in key_sentences:
+            if len(questions) >= num_questions:
+                break
+            words = word_tokenize(sentence)
+            # Pick the longest content word in this sentence as the answer
+            candidates = [
+                w for w in words
+                if w.lower() not in stop
+                and len(w) > 4
+                and w.isalpha()
+                and w.lower() not in used_answers
+            ]
+            if not candidates:
                 continue
 
-            # Simple question generation
-            question_text = sentence.replace('.', '?')
-            if not question_text.endswith('?'):
-                question_text += '?'
+            # Prefer longer, more meaningful words
+            candidates.sort(key=len, reverse=True)
+            correct = candidates[0]
+            used_answers.add(correct.lower())
 
-            # Generate options (simplified)
-            words = word_tokenize(sentence)
-            correct_answer = random.choice(words) if words else "Answer"
+            # Build fill-in-the-blank question
+            blanked = re.sub(
+                r'\b' + re.escape(correct) + r'\b',
+                "______",
+                sentence,
+                count=1,
+                flags=re.IGNORECASE
+            )
+            question_text = f"Fill in the blank: {blanked}"
 
-            # Wrong options
-            wrong_options = ["Option A", "Option B", "Option C"]
-            options = [correct_answer] + wrong_options[:3]
+            distractors = _make_distractors(correct, content_words, n=3)
+            options = [correct] + distractors
             random.shuffle(options)
 
-            question = {
-                "id": f"q_{len(questions)+1}",
+            questions.append({
+                "id": f"q_{len(questions) + 1}",
                 "question": question_text,
+                "stem": sentence,
                 "options": options,
-                "answer": correct_answer,
-                "topic": "General"
-            }
-            questions.append(question)
+                "answer": correct,
+                "topic": "General",
+            })
 
         return questions
 
     except Exception as e:
-        print(f"Error generating MCQs: {e}")
+        print(f"[MCQ ERROR] {e}")
         return []

@@ -1,32 +1,56 @@
 import csv
 from io import StringIO
+from datetime import date, timedelta
 
-def generate_study_schedule_csv(subject: str, hours: float, concept_weights: dict = {}):
+
+def generate_study_schedule_csv(
+    subject: str,
+    hours_per_day: float,
+    concept_difficulty: dict,
+    start_date: str = None,
+) -> str:
+    """
+    Generate a prioritized study schedule weighted by concept difficulty.
+    Returns CSV string.
+    """
+    today = date.today() if not start_date else date.fromisoformat(start_date)
+
+    # Normalize difficulty scores (0-1 scale)
+    if concept_difficulty:
+        total_weight = sum(concept_difficulty.values()) or 1
+        weighted = {
+            topic: round((score / total_weight) * hours_per_day, 2)
+            for topic, score in concept_difficulty.items()
+        }
+    else:
+        weighted = {subject: hours_per_day}
+
+    # Sort: hardest topics get scheduled first
+    sorted_topics = sorted(weighted.items(), key=lambda x: x[1], reverse=True)
+
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Session', 'Subject', 'Topic', 'Activity', 'Hours', 'Priority'])
-    if concept_weights:
-        sorted_topics = sorted(concept_weights.items(), key=lambda x: x[1], reverse=True)
-        total_used = 0
-        for session, (topic, diff) in enumerate(sorted_topics, 1):
-            topic_hours = round(hours * min(diff + 0.2, 0.5), 1)
-            priority = 'High' if diff > 0.6 else ('Medium' if diff > 0.3 else 'Low')
-            activity = 'Intensive Review' if diff > 0.6 else 'Practice Problems'
-            writer.writerow([f'Session {session}', subject, topic, activity, topic_hours, priority])
-            total_used += topic_hours
-        remaining = max(0, round(hours - total_used, 1))
-        if remaining > 0:
-            writer.writerow([f'Session {len(sorted_topics)+1}', subject, 'All Topics', 'Final Revision', remaining, 'Low'])
-    else:
-        activities = [
-            ('Review Concepts', 'Medium'),
-            ('Practice Problems', 'High'),
-            ('Take Quiz', 'High'),
-            ('Revision', 'Medium')
-        ]
-        hours_per = round(hours / len(activities), 1)
-        for i, (activity, priority) in enumerate(activities, 1):
-            writer.writerow([f'Session {i}', subject, 'General', activity, hours_per, priority])
-    csv_data = output.getvalue()
-    output.close()
-    return csv_data
+    writer.writerow(["Date", "Subject", "Topic", "Hours", "Priority", "Suggested Activity"])
+
+    priority_labels = ["Critical", "High", "Medium", "Low"]
+    activities = [
+        "Deep study + practice problems",
+        "Concept review + flashcards",
+        "Quick revision + self-quiz",
+        "Light review + summary read",
+    ]
+
+    for i, (topic, hrs) in enumerate(sorted_topics):
+        day = today + timedelta(days=i)
+        priority = priority_labels[min(i, len(priority_labels) - 1)]
+        activity = activities[min(i, len(activities) - 1)]
+        writer.writerow([
+            day.isoformat(),
+            subject,
+            topic,
+            hrs,
+            priority,
+            activity,
+        ])
+
+    return output.getvalue()

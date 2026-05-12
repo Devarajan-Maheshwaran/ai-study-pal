@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+data/quiz_model.pkl
+data/vectorizer.pkl
+data/kmeans_model.pkl
+data/tfidf_vectorizer.pkl
+data/uploads/
+*.log

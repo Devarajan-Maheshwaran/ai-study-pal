@@ -1,85 +1,91 @@
-# AI Study Pal
+# StudyForge — AI Study Operating System
 
-> An AI-powered adaptive study assistant built as a full-stack capstone project, combining 10 trained ML/NLP models with a React dashboard and Flask API backend.
+> Transform notes, PDFs, and lectures into adaptive quizzes, personalized revision plans, and an AI copilot grounded in your own learning history.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?logo=vercel)](https://ai-study-pal.vercel.app)
-[![Backend](https://img.shields.io/badge/Backend-Railway-purple)](https://railway.app)
-[![Python](https://img.shields.io/badge/Python-3.10-blue?logo=python)](https://python.org)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org)
+![StudyForge](https://img.shields.io/badge/status-active-brightgreen) ![Python](https://img.shields.io/badge/python-3.13-blue) ![React](https://img.shields.io/badge/react-18-61DAFB) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## What It Does
 
-The system lets a student work inside **subject-based workspaces** — paste notes, upload PDFs, or use YouTube links, then:
-- Generate AI summaries and topic keywords
-- Auto-generate MCQs with difficulty classification
-- Take adaptive quizzes where difficulty adjusts in real time
-- Automatically compute knowledge tracing, exam predictions, and concept difficulty from quiz history
-- Get personalized study schedules weighted toward weak topics
-- Receive curated resource recommendations matched to their performance
+StudyForge is not a quiz app or a chatbot. It is an **adaptive learning operating system** that closes the loop between content ingestion, assessment, diagnosis, and planning.
 
-## Trained Models (Jupyter Notebooks)
+1. **Upload** notes, PDFs, or YouTube links
+2. **Get** summaries, keywords, and topic extraction automatically
+3. **Take** adaptive MCQ quizzes generated from your material
+4. **Track** knowledge state, weak topics, and exam readiness over time
+5. **Ask** the Jarvis-style copilot for targeted study advice based on your actual performance
 
-| Notebook | Model | Used By |
+## Architecture
+
+```
+React 18 + TypeScript (Vite) ── Vercel
+        │
+        ▼
+Flask API Gateway ─────────── Railway
+        │
+        ├── NLP Models (TF-IDF, sklearn)
+        ├── Quiz Engine (difficulty classifier)
+        ├── Knowledge Tracing (BKT-inspired)
+        ├── Exam Score Predictor
+        ├── Study Schedule Generator
+        ├── Resource Recommender
+        └── Gemini-powered Copilot
+```
+
+## ML Models
+
+| Model | Algorithm | Purpose |
 |---|---|---|
-| NB03 | Quiz Difficulty Classifier (LogisticRegression) | Quiz Service |
-| NB04 | Topic Clustering + Extraction (LDA + TF-IDF) | Topic Service |
-| NB05 | Text Summarizer (TF-IDF sentence ranking) | Summary Service |
-| NB06 | Feedback Generator (score-pattern model) | Feedback Service |
-| NB07 | Knowledge Tracing (BKT-inspired) | `/api/quiz/submit` |
-| NB08 | Exam Score Predictor (regression) | `/api/quiz/submit` |
-| NB09 | Study Time Optimizer | `/api/study-schedule` |
-| NB10 | Concept Difficulty Ranker | `/api/progress` |
-| NB11 | Resource Recommender | `/api/resources` |
-| NB12 | Evaluation Dashboard | Progress Analytics UI |
+| Quiz Difficulty Classifier | Logistic Regression | easy/medium/hard labels |
+| MCQ Generator | TF-IDF + Fill-in-blank | Question generation |
+| Summarizer | TF-IDF sentence scoring | Extractive summaries |
+| Knowledge Tracer | BKT-inspired scoring | Ability estimation |
+| Exam Score Predictor | Accuracy + consistency | Score forecasting |
+| Concept Difficulty Ranker | Per-topic accuracy | Weak topic detection |
+| Resource Recommender | Rule-based + accuracy | Adaptive resources |
 
 ## Tech Stack
 
-**Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Recharts, React Router v6, TanStack Query
+**Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Recharts, TanStack Query, React Router v6
 
-**Backend:** Python, Flask, Flask-CORS, scikit-learn, NLTK, PyMuPDF, Gunicorn
+**Backend:** Python 3.13, Flask 2.3, scikit-learn 1.6, NLTK, PyMuPDF, youtube-transcript-api, Google Generative AI
 
-**Deploy:** Frontend → Vercel | Backend → Railway
+**Deployment:** Vercel (frontend) + Railway (backend)
 
-## Project Structure
+## Local Development
 
-```
-ai-study-pal/
-├── backend/
-│   ├── models/          # Trained ML models (NB03-NB12)
-│   ├── services/        # API service layer
-│   ├── data/            # Training datasets + quiz_history.json
-│   ├── app.py           # Flask application factory
-│   └── Procfile         # Railway deployment
-├── frontend/
-│   ├── src/
-│   │   ├── pages/       # LandingPage + UnifiedDashboard
-│   │   ├── components/  # Feature sections (Summarizer, MCQ, Quiz, Progress...)
-│   │   ├── hooks/       # useAppState context
-│   │   └── lib/         # apiClient.ts
-│   └── vercel.json      # Vercel SPA routing config
-└── notebooks/           # Training notebooks NB01-NB12
-```
-
-## Local Setup
-
+### Backend
 ```bash
-# Backend
 cd backend
+python -m venv venv
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Mac/Linux
 pip install -r requirements.txt
 python app.py
+```
 
-# Frontend
+### Frontend
+```bash
 cd frontend
 npm install
-cp ../.env.example .env.local   # fill in VITE_API_BASE_URL
 npm run dev
 ```
 
-## Key Design Decision
+Backend runs on `http://localhost:5000`, frontend on `http://localhost:5173`.
 
-All advanced analytics (knowledge tracing, exam prediction, concept difficulty, feedback) run **automatically from quiz submission history** — not from manual user inputs. After 10+ quiz answers, the dashboard unlocks full AI-driven insights.
+## Environment Variables
 
-## Author
+Create `backend/.env`:
+```
+GEMINI_API_KEY=your_gemini_api_key
+YOUTUBE_API_KEY=your_youtube_api_key  # optional
+```
 
-Devarajan Maheshwaran — [GitHub](https://github.com/Devarajan-Maheshwaran)
+Create `frontend/.env`:
+```
+VITE_API_BASE_URL=http://127.0.0.1:5000/api
+```
+
+## Deployment
+
+- **Frontend → Vercel:** Connect repo, set `VITE_API_BASE_URL` to your Railway backend URL
+- **Backend → Railway:** Connect repo, set root to `backend/`, add env vars
