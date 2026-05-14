@@ -1,6 +1,16 @@
 import csv
 import os
 from datetime import datetime
+from models.quiz_model import generate_mcqs
+
+SAMPLE_TEXTS = {
+    "General": "The AI Study Pal is an intelligent companion designed to help students learn more effectively. It uses NLP to summarize notes, generate quizzes, and provide study tips based on student progress.",
+    "Computer Science": "Computer Science is the study of computers and computational systems. Unlike electrical and computer engineers, computer scientists deal mostly with software and software systems; this includes their theory, design, development, and application.",
+    "Mathematics": "Mathematics is the science that deals with the logic of shape, quantity and arrangement. Math is all around us, in everything we do. It is the building block for everything in our daily lives, including mobile devices, architecture, art, money, engineering, and even sports.",
+    "Physics": "Physics is the natural science that studies matter, its fundamental constituents, its motion and behavior through space and time, and the related entities of energy and force. Physics is one of the most fundamental scientific disciplines, with its main goal being to understand how the universe behaves.",
+    "Chemistry": "Chemistry is the scientific study of the properties and behavior of matter. It is a physical science within the natural sciences that studies the chemical elements that make up matter and compounds made of atoms, molecules and ions: their composition, structure, properties, behavior and the changes they undergo during a reaction with other substances.",
+    "Biology": "Biology is the scientific study of life. It is a natural science with a broad scope but has several unifying themes that tie it together as a single, coherent field. For instance, all organisms are made up of cells that process hereditary information encoded in genes, which can be transmitted to future generations."
+}
 
 DATA_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'data')
 
@@ -100,3 +110,13 @@ def get_quiz_questions(user_id, subject, difficulty=None):
             'topic': subject
         })
     return questions
+def get_all_subjects():
+    return get_available_subjects()
+
+def create_subject(name):
+    created = save_subject(name)
+    return {
+        "name": name,
+        "created": created,
+        "message": "Subject created" if created else "Subject already exists"
+    }
