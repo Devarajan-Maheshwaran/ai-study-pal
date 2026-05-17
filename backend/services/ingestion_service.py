@@ -1,12 +1,12 @@
 """Document ingestion pipeline.
 
-Flow: raw input → text extraction → chunk → embed (sentence-transformers)
-      → store chunks in Postgres → store embeddings in ChromaDB
-      → extract topics → generate summary
+Fix (Phase 7): DocumentChunk instantiation now uses the correct field names
+  text=chunk  (not chunk_text / workspace_id / chroma_id).
+ChromaDB already stores workspace_id in its metadata; the Postgres table only
+needs document_id, chunk_index, and text.
 """
 import os
 import uuid
-import textwrap
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -18,8 +18,9 @@ from backend.models.nlp_utils import extract_keywords
 from backend.config import config
 
 # ── ChromaDB client (lazy init) ───────────────────────────────────────────────
-_chroma_client = None
+_chroma_client     = None
 _chroma_collection = None
+
 
 def _get_chroma():
     global _chroma_client, _chroma_collection
@@ -37,8 +38,9 @@ def _get_chroma():
     return _chroma_collection
 
 
-# ── Sentence-transformers embedder (lazy init, local model, no API) ───────────
+# ── Sentence-transformers embedder (lazy init) ────────────────────────────────
 _embedder = None
+
 
 def _get_embedder():
     global _embedder
@@ -76,9 +78,8 @@ def ingest_document(
     url: str = "",
     file=None,
 ) -> dict:
-    """Ingest a document into Postgres + ChromaDB.
-    Returns a summary dict.
-    """
+    """Ingest a document into Postgres + ChromaDB. Returns a summary dict."""
+
     # 1. Extract raw text
     raw = ""
     if source_type == "text":
@@ -102,7 +103,7 @@ def ingest_document(
         word_count=len(raw.split()),
     )
     db.add(doc)
-    db.flush()  # get doc.id before commit
+    db.flush()  # materialise doc.id before FK references
 
     # 3. Chunk
     chunks = _chunk_text(raw)
@@ -110,7 +111,7 @@ def ingest_document(
     # 4. Embed + store in ChromaDB
     collection = _get_chroma()
     embedder   = _get_embedder()
-    chroma_ids = []
+    chroma_ids: list = []
 
     if collection is not None and embedder is not None:
         try:
@@ -120,8 +121,11 @@ def ingest_document(
                 ids=chroma_ids,
                 embeddings=embeddings,
                 documents=chunks,
-                metadatas=[{"workspace_id": workspace_id, "doc_id": doc.id, "chunk_index": i}
-                           for i in range(len(chunks))],
+                # workspace_id lives here in ChromaDB metadata — not in Postgres chunks
+                metadatas=[
+                    {"workspace_id": workspace_id, "doc_id": doc.id, "chunk_index": i}
+                    for i in range(len(chunks))
+                ],
             )
         except Exception as e:
             print(f"[ingestion] ChromaDB embed failed: {e}")
@@ -129,24 +133,21 @@ def ingest_document(
     else:
         chroma_ids = [None] * len(chunks)
 
-    # 5. Persist DocumentChunk rows
-    for i, (chunk, cid) in enumerate(zip(chunks, chroma_ids)):
+    # 5. Persist DocumentChunk rows (only fields that exist on the ORM model)
+    for i, chunk in enumerate(chunks):
         db.add(DocumentChunk(
             document_id=doc.id,
-            workspace_id=workspace_id,
             chunk_index=i,
-            chunk_text=chunk,
-            chroma_id=cid,
+            text=chunk,          # correct field name per models.py
         ))
 
     # 6. Extract topics + upsert into Topic table
     keywords = extract_keywords(raw)
-    for kw in keywords[:8]:  # top 8 keywords become topics
-        existing = db.query(Topic).filter_by(workspace_id=workspace_id, name=kw).first()
-        if not existing:
+    for kw in keywords[:8]:
+        if not db.query(Topic).filter_by(workspace_id=workspace_id, name=kw).first():
             db.add(Topic(workspace_id=workspace_id, name=kw))
 
-    # 7. Generate summary using existing Text Summarizer model (no API)
+    # 7. Generate summary (local NLP, no external API)
     try:
         summary, tips = generate_summary(raw, subject="General")
     except Exception:
@@ -155,12 +156,12 @@ def ingest_document(
     db.commit()
 
     return {
-        "document_id":  doc.id,
-        "title":        title,
-        "source_type":  source_type,
-        "word_count":   doc.word_count,
-        "chunk_count":  len(chunks),
-        "topics":       keywords[:8],
-        "summary":      summary,
-        "tips":         tips,
+        "document_id": doc.id,
+        "title":       title,
+        "source_type": source_type,
+        "word_count":  doc.word_count,
+        "chunk_count": len(chunks),
+        "topics":      keywords[:8],
+        "summary":     summary,
+        "tips":        tips,
     }

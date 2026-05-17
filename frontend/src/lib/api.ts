@@ -1,12 +1,35 @@
+import { supabase } from '../integrations/supabase/client';
+
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
+/**
+ * Core request helper.
+ * Automatically attaches `Authorization: Bearer <token>` when a Supabase
+ * session is active. Safe to call when logged-out (header simply omitted).
+ */
 async function req<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
   const headers: Record<string, string> = {};
+
+  // Inject Supabase JWT if a session exists
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) {
+      headers['Authorization'] = `Bearer ${data.session.access_token}`;
+    }
+  } catch {
+    // No session or Supabase not configured — proceed without auth header
+  }
+
   let bodyPayload: BodyInit | undefined;
   if (body) {
-    if (isForm) { bodyPayload = body as FormData; }
-    else { headers['Content-Type'] = 'application/json'; bodyPayload = JSON.stringify(body); }
+    if (isForm) {
+      bodyPayload = body as FormData;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      bodyPayload = JSON.stringify(body);
+    }
   }
+
   const res = await fetch(`${BASE}${path}`, { method, headers, body: bodyPayload });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -17,12 +40,13 @@ async function req<T>(method: string, path: string, body?: unknown, isForm = fal
 
 export const BASE_URL = BASE;
 export const api = {
-  get:  <T>(path: string)                => req<T>('GET',    path),
-  post: <T>(path: string, body: unknown) => req<T>('POST',   path, body),
-  del:  <T>(path: string)                => req<T>('DELETE', path),
-  form: <T>(path: string, form: FormData) => req<T>('POST',  path, form, true),
+  get:  <T>(path: string)                 => req<T>('GET',    path),
+  post: <T>(path: string, body: unknown)  => req<T>('POST',   path, body),
+  del:  <T>(path: string)                 => req<T>('DELETE', path),
+  form: <T>(path: string, form: FormData) => req<T>('POST',   path, form, true),
 };
 
+// ── TypeScript interfaces ────────────────────────────────────────────────────
 export interface Workspace      { id: string; name: string; subject: string; exam_date: string | null; created_at: string; }
 export interface Topic          { id: string; name: string; mastery_score: number; difficulty_score: number; }
 export interface Document       { id: string; title: string; source_type: string; word_count: number; uploaded_at: string; }
@@ -41,6 +65,7 @@ export interface PlannerPreview { schedule: PlannerRow[]; total_hours: number; s
 export interface CopilotReply   { response: string; context_used: boolean; }
 export interface RawTextResult  { text: string; word_count: number; doc_count: number; }
 
+// ── API namespaces ───────────────────────────────────────────────────────────
 export const workspacesApi = {
   list:    ()              => api.get<Workspace[]>('/api/workspaces'),
   get:     (id: string)   => api.get<WorkspaceDetail>(`/api/workspaces/${id}`),

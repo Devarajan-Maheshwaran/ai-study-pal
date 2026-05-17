@@ -1,86 +1,170 @@
-import pytest
+"""Integration tests for workspace-centric API endpoints."""
 import json
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from app import create_app
+import pytest
 
-@pytest.fixture
-def client():
-    app = create_app()
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
 
-def test_health_endpoint(client):
-    response = client.get('/health')
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data['status'] == 'ok'
+def _json(resp):
+    return json.loads(resp.data)
 
-def test_subjects_get(client):
-    response = client.get('/api/subjects')
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'subjects' in data
-    assert isinstance(data['subjects'], list)
 
-def test_subjects_post(client):
-    response = client.post('/api/subjects', json={'name': 'Test Subject'})
-    assert response.status_code in [200, 201]
+# ── /health ──────────────────────────────────────────────────────────────────
 
-def test_dashboard(client):
-    response = client.get('/api/dashboard?user_id=test_user')
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'topics_studied' in data
+def test_health(client):
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert _json(resp)["status"] == "ok"
 
-def test_adaptive_quiz(client):
-    response = client.get('/api/adaptive-quiz?user_id=test_user&subject=General')
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'questions' in data
-    assert isinstance(data['questions'], list)
 
-def test_revision_summary(client):
-    response = client.post('/api/revision-summary', json={'text': 'Test text', 'subject': 'General'})
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'summary' in data
+# ── Workspaces ───────────────────────────────────────────────────────────────
 
-def test_notes_to_mcqs(client):
-    response = client.post('/api/notes-to-mcqs', json={
-        'subject': 'AIML Fundamentals',
-        'source_type': 'text',
-        'notes': 'Machine learning is a subset of AI that enables systems to learn from data.',
-        'max_questions': 2
+def test_list_workspaces_empty(client):
+    resp = client.get("/api/workspaces")
+    assert resp.status_code == 200
+    assert isinstance(_json(resp), list)
+
+
+def test_create_workspace(client):
+    resp = client.post("/api/workspaces", json={"name": "Physics 101", "subject": "Physics"})
+    assert resp.status_code == 201
+    data = _json(resp)
+    assert data["name"] == "Physics 101"
+    assert "id" in data
+    return data["id"]
+
+
+def test_create_workspace_missing_name(client):
+    resp = client.post("/api/workspaces", json={})
+    assert resp.status_code == 400
+
+
+def test_get_workspace(client):
+    # Create then fetch
+    ws = _json(client.post("/api/workspaces", json={"name": "Bio", "subject": "Biology"}))
+    resp = client.get(f"/api/workspaces/{ws['id']}")
+    assert resp.status_code == 200
+    data = _json(resp)
+    assert data["id"] == ws["id"]
+    assert "topics" in data
+    assert "documents" in data
+
+
+def test_delete_workspace(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Temp WS"}))
+    resp = client.delete(f"/api/workspaces/{ws['id']}")
+    assert resp.status_code == 200
+    # Confirm gone
+    resp2 = client.get(f"/api/workspaces/{ws['id']}")
+    assert resp2.status_code == 404
+
+
+def test_get_nonexistent_workspace(client):
+    resp = client.get("/api/workspaces/does-not-exist")
+    assert resp.status_code == 404
+
+
+# ── Ingestion ─────────────────────────────────────────────────────────────────
+
+def test_ingest_text(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Ingest Test"}))
+    form = {
+        "source":  "text",
+        "title":   "Sample Notes",
+        "content": (
+            "Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide "
+            "to produce oxygen and energy in the form of glucose. The light-dependent reactions "
+            "occur in the thylakoid membrane and the Calvin cycle occurs in the stroma of the chloroplast."
+        ),
+    }
+    resp = client.post(f"/api/workspaces/{ws['id']}/ingest", data=form)
+    assert resp.status_code == 201
+    data = _json(resp)
+    assert data["word_count"] > 0
+    assert "summary" in data
+
+
+def test_ingest_too_short(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Short Ingest"}))
+    resp = client.post(f"/api/workspaces/{ws['id']}/ingest", data={"source": "text", "content": "Too short."})
+    assert resp.status_code == 400
+
+
+# ── Summarize ─────────────────────────────────────────────────────────────────
+
+def test_summarize(client):
+    resp = client.post("/api/summarize", json={
+        "text": (
+            "The mitochondria is the powerhouse of the cell. It generates ATP through oxidative "
+            "phosphorylation. The electron transport chain is embedded in the inner mitochondrial "
+            "membrane and pumps protons to create an electrochemical gradient used by ATP synthase."
+        ),
+        "subject": "Biology",
     })
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'questions' in data
-    assert isinstance(data['questions'], list)
+    assert resp.status_code == 200
+    data = _json(resp)
+    assert "summary" in data
+    assert "keywords" in data
 
-def test_quiz_submit(client):
-    response = client.post('/api/quiz/submit', json={
-        'user_id': 'test_user',
-        'subject': 'AIML Fundamentals',
-        'answers': [
-            {'question_id': 'q1', 'selected': 0, 'correct': True},
-            {'question_id': 'q2', 'selected': 1, 'correct': False}
-        ]
+
+def test_summarize_too_short(client):
+    resp = client.post("/api/summarize", json={"text": "Short."})
+    assert resp.status_code == 400
+
+
+# ── Quiz generation ───────────────────────────────────────────────────────────
+
+def test_quiz_generate(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Quiz WS"}))
+    resp = client.post("/api/quiz/generate", json={
+        "workspace_id": ws["id"],
+        "text": (
+            "Newton's first law states that an object at rest stays at rest and an object in motion "
+            "stays in motion unless acted upon by an external force. The second law defines force as "
+            "mass times acceleration. The third law states that for every action there is an equal "
+            "and opposite reaction."
+        ),
+        "num_questions": 3,
     })
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'correct' in data
-    assert 'total' in data
-    assert 'accuracy' in data
-    assert 'feedback' in data
-def test_resources(client):
-    response = client.get('/api/resources?subject=General')
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert 'resources' in data
+    assert resp.status_code == 200
+    data = _json(resp)
+    assert "questions" in data
+    assert len(data["questions"]) > 0
 
-def test_study_schedule(client):
-    response = client.get('/api/study-schedule?subject=General&hours=5')
-    assert response.status_code == 200
+
+def test_quiz_generate_too_short(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Short Quiz"}))
+    resp = client.post("/api/quiz/generate", json={"workspace_id": ws["id"], "text": "Short text."})
+    assert resp.status_code == 400
+
+
+# ── Progress ──────────────────────────────────────────────────────────────────
+
+def test_progress_empty(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Progress WS"}))
+    resp = client.get(f"/api/progress/{ws['id']}")
+    assert resp.status_code == 200
+    data = _json(resp)
+    assert data["total_attempts"] == 0
+
+
+# ── Flashcards ────────────────────────────────────────────────────────────────
+
+def test_flashcard_generate(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Flash WS"}))
+    resp = client.post("/api/flashcards/generate", json={
+        "workspace_id": ws["id"],
+        "text": (
+            "The French Revolution began in 1789 and ended in 1799. It was a period of radical "
+            "political and societal change in France. Key figures included Robespierre and Napoleon. "
+            "The revolution led to the rise of democracy and the decline of absolute monarchy."
+        ),
+    })
+    assert resp.status_code == 201
+    data = _json(resp)
+    assert data["generated"] > 0
+
+
+def test_list_flashcards(client):
+    ws = _json(client.post("/api/workspaces", json={"name": "Flash List WS"}))
+    resp = client.get(f"/api/flashcards/{ws['id']}")
+    assert resp.status_code == 200
+    assert "cards" in _json(resp)
