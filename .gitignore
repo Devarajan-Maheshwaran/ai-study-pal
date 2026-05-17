@@ -2,6 +2,7 @@
 node_modules/
 npm-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Python
 __pycache__/
@@ -13,12 +14,16 @@ __pycache__/
 dist/
 build/
 .eggs/
+venv/
+.venv/
 
 # Env
 .env
 .env.local
 .env.*.local
 !.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # Build output
 frontend/dist/
@@ -26,7 +31,6 @@ frontend/.vite/
 
 # Logs
 *.log
-app_errors.log
 
 # IDE
 .vscode/
@@ -34,11 +38,29 @@ app_errors.log
 .DS_Store
 Thumbs.db
 
-# ML artifacts (large binary — store in object storage)
+# ML artifacts
 backend/models/*.pkl
 backend/models/*.h5
 backend/models/*.pt
 *.joblib
 
-# Jupyter checkpoints
+# Vector DB (local)
+backend/data/chroma/
+
+# Uploads
+backend/data/uploads/
+
+# SQLite fallback db
+backend/data/*.db
+
+# Jupyter
 .ipynb_checkpoints/
+
+# Stale root files
+app.py
+app_backup.py
+app_errors.log
+setup_files.py
+setup_services.py
+package.json
+package-lock.json

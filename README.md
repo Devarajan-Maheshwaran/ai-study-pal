@@ -1,91 +1,125 @@
-# StudyForge — AI Study Operating System
+# StudyForge — AI Study Platform
 
-> Transform notes, PDFs, and lectures into adaptive quizzes, personalized revision plans, and an AI copilot grounded in your own learning history.
-
-![StudyForge](https://img.shields.io/badge/status-active-brightgreen) ![Python](https://img.shields.io/badge/python-3.13-blue) ![React](https://img.shields.io/badge/react-18-61DAFB) ![License](https://img.shields.io/badge/license-MIT-green)
-
-## What It Does
-
-StudyForge is not a quiz app or a chatbot. It is an **adaptive learning operating system** that closes the loop between content ingestion, assessment, diagnosis, and planning.
-
-1. **Upload** notes, PDFs, or YouTube links
-2. **Get** summaries, keywords, and topic extraction automatically
-3. **Take** adaptive MCQ quizzes generated from your material
-4. **Track** knowledge state, weak topics, and exam readiness over time
-5. **Ask** the Jarvis-style copilot for targeted study advice based on your actual performance
-
-## Architecture
-
-```
-React 18 + TypeScript (Vite) ── Vercel
-        │
-        ▼
-Flask API Gateway ─────────── Railway
-        │
-        ├── NLP Models (TF-IDF, sklearn)
-        ├── Quiz Engine (difficulty classifier)
-        ├── Knowledge Tracing (BKT-inspired)
-        ├── Exam Score Predictor
-        ├── Study Schedule Generator
-        ├── Resource Recommender
-        └── Gemini-powered Copilot
-```
-
-## ML Models
-
-| Model | Algorithm | Purpose |
-|---|---|---|
-| Quiz Difficulty Classifier | Logistic Regression | easy/medium/hard labels |
-| MCQ Generator | TF-IDF + Fill-in-blank | Question generation |
-| Summarizer | TF-IDF sentence scoring | Extractive summaries |
-| Knowledge Tracer | BKT-inspired scoring | Ability estimation |
-| Exam Score Predictor | Accuracy + consistency | Score forecasting |
-| Concept Difficulty Ranker | Per-topic accuracy | Weak topic detection |
-| Resource Recommender | Rule-based + accuracy | Adaptive resources |
+An end-to-end exam preparation platform powered by on-device ML models (no external AI API).
+Upload notes → auto-summarize → generate adaptive quizzes → track mastery → predict exam score.
 
 ## Tech Stack
 
-**Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Recharts, TanStack Query, React Router v6
+| Layer | Stack |
+|---|---|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router v6 |
+| Backend | Python 3.11, Flask 3, SQLAlchemy 2, Supabase Postgres |
+| Vector DB | ChromaDB (local persistent) |
+| Embeddings | `all-MiniLM-L6-v2` via sentence-transformers (100% local) |
+| ML Models | scikit-learn + NLTK (NB01–NB10 notebook models) |
+| Deploy | Vercel (frontend) + Railway / Render (backend) |
 
-**Backend:** Python 3.13, Flask 2.3, scikit-learn 1.6, NLTK, PyMuPDF, youtube-transcript-api, Google Generative AI
+## Project Structure
 
-**Deployment:** Vercel (frontend) + Railway (backend)
-
-## Local Development
-
-### Backend
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Mac/Linux
-pip install -r requirements.txt
-python app.py
+```
+├── frontend/          # Vite + React app
+│   ├── src/
+│   │   ├── components/forge/   # Design system components
+│   │   ├── pages/              # 8 workspace pages
+│   │   ├── hooks/useWorkspace.ts
+│   │   └── lib/api.ts          # Typed API client
+│   └── vercel.json
+├── backend/
+│   ├── app.py                  # Flask factory
+│   ├── config.py
+│   ├── db/
+│   │   ├── database.py         # SQLAlchemy engine (Supabase / SQLite fallback)
+│   │   ├── models.py           # ORM: workspaces, topics, documents, quizzes, attempts
+│   │   └── migrate.py          # One-time table creation
+│   ├── routes/
+│   │   ├── workspaces.py       # CRUD + /ingest
+│   │   ├── quiz.py             # generate, submit, history
+│   │   ├── content.py          # summarize, progress, weak-topics, raw-text
+│   │   ├── copilot.py          # chat + planner
+│   │   └── flashcards.py       # SM-2 spaced repetition
+│   ├── services/
+│   │   ├── ingestion_service.py   # PDF/text/YouTube → chunk → embed → ChromaDB
+│   │   ├── retrieval_service.py   # Vector search
+│   │   ├── copilot_service.py     # Context-aware responses (no LLM API)
+│   │   └── ...                    # summary, schedule, resources
+│   └── models/                    # scikit-learn ML models
 ```
 
-### Frontend
+## Local Setup
+
+### 1. Backend
+
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Copy env template and fill in values
+cp .env.example .env
+
+# Create DB tables (SQLite by default, Postgres if DATABASE_URL is set)
+python -m backend.db.migrate
+
+# Start dev server
+python app.py
+# → running on http://localhost:5000
+```
+
+### 2. Frontend
+
 ```bash
 cd frontend
 npm install
+cp .env.example .env          # sets VITE_API_URL=http://localhost:5000
 npm run dev
+# → running on http://localhost:5173
 ```
 
-Backend runs on `http://localhost:5000`, frontend on `http://localhost:5173`.
+## Supabase Setup (for production)
 
-## Environment Variables
+1. Create a project at [supabase.com](https://supabase.com)
+2. Go to **Settings → Database** → copy the connection string
+3. Add to `backend/.env`:
+   ```
+   DATABASE_URL=postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres
+   SUPABASE_URL=https://<ref>.supabase.co
+   SUPABASE_SERVICE_KEY=<service_role_key>
+   ```
+4. Run `python -m backend.db.migrate` once to create all tables
 
-Create `backend/.env`:
+## Vercel Deploy (frontend)
+
+1. Import repo at [vercel.com/new](https://vercel.com/new)
+2. Set **Root Directory** → `frontend`
+3. Framework preset: **Vite** | Build: `npm run build` | Output: `dist`
+4. Add env var: `VITE_API_URL=https://your-backend.railway.app`
+5. Deploy — every push to `main` auto-deploys
+
+## Backend Deploy (Railway / Render)
+
+```bash
+# Railway (recommended)
+railway login
+railway init
+railway up
+# Set all env vars from .env.example in Railway dashboard
 ```
-GEMINI_API_KEY=your_gemini_api_key
-YOUTUBE_API_KEY=your_youtube_api_key  # optional
+
+The `Procfile` is already configured:
+```
+web: gunicorn 'backend.app:create_app()' --bind 0.0.0.0:$PORT --workers 2 --timeout 120
 ```
 
-Create `frontend/.env`:
-```
-VITE_API_BASE_URL=http://127.0.0.1:5000/api
-```
+## Features
 
-## Deployment
-
-- **Frontend → Vercel:** Connect repo, set `VITE_API_BASE_URL` to your Railway backend URL
-- **Backend → Railway:** Connect repo, set root to `backend/`, add env vars
+| Feature | Model used |
+|---|---|
+| Text summarizer | Extractive NLP (TF-IDF + sentence scoring) |
+| Keyword extraction | TF-IDF |
+| MCQ generation | N-gram + distractor selection |
+| Difficulty classifier | Naive Bayes (NB01) |
+| Adaptive quiz ordering | Ability-based sort (NB04) |
+| Exam score prediction | Rolling accuracy + consistency score |
+| Spaced repetition | SM-2 algorithm |
+| Semantic search | all-MiniLM-L6-v2 + ChromaDB |
+| Copilot responses | Intent detection + context injection (no LLM API) |
