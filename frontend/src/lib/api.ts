@@ -1,223 +1,147 @@
-// Central API layer — all backend calls go through here
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api';
+/**
+ * Centralised API client.
+ * All fetch calls go through here so base URL is configured once.
+ * Phase 2: wired to real Flask backend.
+ */
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...((options.headers as Record<string,string>) || {}) },
-    ...options,
-  });
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
+
+async function req<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
+  const headers: Record<string, string> = {};
+  let bodyPayload: BodyInit | undefined;
+
+  if (body) {
+    if (isForm) {
+      bodyPayload = body as FormData;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      bodyPayload = JSON.stringify(body);
+    }
+  }
+
+  const res = await fetch(`${BASE}${path}`, { method, headers, body: bodyPayload });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    throw new Error((err as { error?: string }).error ?? res.statusText);
   }
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
-async function requestForm<T>(path: string, formData: FormData): Promise<T> {
-  const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, { method: 'POST', body: formData });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json();
+export const api = {
+  get:    <T>(path: string)                      => req<T>('GET',    path),
+  post:   <T>(path: string, body: unknown)       => req<T>('POST',   path, body),
+  del:    <T>(path: string)                      => req<T>('DELETE', path),
+  form:   <T>(path: string, form: FormData)      => req<T>('POST',   path, form, true),
+};
+
+// ── Typed helpers ─────────────────────────────────────────────────────────────
+
+export interface Workspace {
+  id: string;
+  name: string;
+  subject: string;
+  exam_date: string | null;
+  created_at: string;
 }
 
-// ── Health ────────────────────────────────────────────────────────────
-export const checkHealth = () =>
-  request<{ status: string; timestamp: string }>('/health'.replace('/api', ''));
+export interface Topic {
+  id: string;
+  name: string;
+  mastery_score: number;
+  difficulty_score: number;
+}
 
-// ── Parse content ─────────────────────────────────────────────────────
-export interface ParseResult {
-  text: string;
+export interface Document {
+  id: string;
+  title: string;
+  source_type: string;
   word_count: number;
-  keywords: string[];
+  uploaded_at: string;
 }
 
-export function parseText(content: string): Promise<ParseResult> {
-  const fd = new FormData();
-  fd.append('source', 'text');
-  fd.append('content', content);
-  return requestForm('/parse', fd);
+export interface WorkspaceDetail extends Workspace {
+  topics: Topic[];
+  documents: Document[];
 }
 
-export function parsePDF(file: File): Promise<ParseResult> {
-  const fd = new FormData();
-  fd.append('source', 'pdf');
-  fd.append('file', file);
-  return requestForm('/parse', fd);
-}
-
-export function parseYouTube(url: string): Promise<ParseResult> {
-  const fd = new FormData();
-  fd.append('source', 'youtube');
-  fd.append('url', url);
-  return requestForm('/parse', fd);
-}
-
-export function parseURL(url: string): Promise<ParseResult> {
-  const fd = new FormData();
-  fd.append('source', 'url');
-  fd.append('url', url);
-  return requestForm('/parse', fd);
-}
-
-// ── Summarize ─────────────────────────────────────────────────────────
-export interface SummaryResult {
-  summary: string;
-  tips: string[];
-  keywords: string[];
-}
-
-export function summarize(text: string, subject = 'General'): Promise<SummaryResult> {
-  return request('/summarize', {
-    method: 'POST',
-    body: JSON.stringify({ text, subject }),
-  });
-}
-
-// ── MCQ ───────────────────────────────────────────────────────────────
-export interface MCQQuestion {
+export interface QuizQuestion {
   id: string;
   question: string;
-  stem: string;
   options: string[];
-  answer: string;
+  correct_answer: string;
   difficulty: string;
-  subject: string;
   topic: string;
 }
 
-export function generateMCQs(
-  text: string,
-  subject = 'General',
-  num_questions = 5
-): Promise<{ questions: MCQQuestion[]; count: number }> {
-  return request('/mcqs', {
-    method: 'POST',
-    body: JSON.stringify({ text, subject, num_questions }),
-  });
-}
-
-// ── Adaptive Quiz ─────────────────────────────────────────────────────
-export function generateAdaptiveQuiz(
-  text: string,
-  subject = 'General',
-  num_questions = 10,
-  difficulty = 'easy'
-): Promise<{ questions: MCQQuestion[]; count: number }> {
-  return request('/quiz/adaptive', {
-    method: 'POST',
-    body: JSON.stringify({ text, subject, num_questions, difficulty }),
-  });
-}
-
-// ── Submit Quiz ───────────────────────────────────────────────────────
-export interface AnswerPayload {
-  question_id: string;
-  user_answer: string;
-  correct_answer: string;
-  topic?: string;
-}
-
-export interface QuizResult {
+export interface QuizAttempt {
+  id: string;
+  quiz_id: string;
+  score: number;
   correct: number;
   total: number;
-  accuracy: number;
-  feedback: string;
-  suggestions: string[];
-  weak_topics: string[];
-  knowledge: { ability: number; trend: string; attempts_in_subject: number };
-  exam_prediction: { predicted_score: number; readiness: string; confidence: number };
-  concept_difficulty: Record<string, { accuracy: number; difficulty_score: number; attempts: number }>;
+  time_taken: number | null;
+  ml_feedback: Record<string, unknown> | null;
+  submitted_at: string;
 }
 
-export function submitQuiz(
-  subject: string,
-  answers: AnswerPayload[],
-  user_id = 'default'
-): Promise<QuizResult> {
-  return request('/quiz/submit', {
-    method: 'POST',
-    body: JSON.stringify({ subject, answers, user_id }),
-  });
+export interface IngestResult {
+  document_id: string;
+  title: string;
+  source_type: string;
+  word_count: number;
+  chunk_count: number;
+  topics: string[];
+  summary: string;
+  tips: string[];
 }
 
-// ── Progress ──────────────────────────────────────────────────────────
-export interface ProgressResult {
-  averageAccuracy: number;
-  totalQuizAttempts: number;
-  subjectStats: Array<{
-    subjectName: string;
-    accuracy: number;
-    quizAttempts: number;
-    correctAnswers: number;
-    totalQuestions: number;
-  }>;
-  knowledge: Record<string, { ability: number; trend: string; attempts: number }>;
-  exam_predictions: Record<string, { predicted_score: number; readiness: string }>;
-  concept_difficulty: Record<string, Record<string, number>>;
+export interface ProgressData {
+  average_accuracy: number;
+  total_attempts: number;
+  score_trend: { attempt: number; score: number; submitted_at: string }[];
   sessions_this_week: number;
 }
 
-export function getProgress(user_id = 'default'): Promise<ProgressResult> {
-  return request(`/progress?user_id=${user_id}`);
+export interface ExamPrediction {
+  predicted_score: number | null;
+  readiness: string;
+  confidence: number;
 }
 
-// ── Resources ─────────────────────────────────────────────────────────
-export interface Resource {
-  id: string;
-  title: string;
-  url: string;
-  type: string;
-  description: string;
+export interface WeakTopic {
+  name: string;
+  mastery: number;
+  difficulty: number;
 }
 
-export function getResources(
-  subject: string,
-  topics: string[] = [],
-  accuracy = 0.5
-): Promise<{ resources: Resource[] }> {
-  return request('/resources', {
-    method: 'POST',
-    body: JSON.stringify({ subject, topics, accuracy }),
-  });
-}
+// Workspace
+export const workspacesApi = {
+  list:   ()              => api.get<Workspace[]>('/api/workspaces'),
+  get:    (id: string)    => api.get<WorkspaceDetail>(`/api/workspaces/${id}`),
+  create: (data: { name: string; subject?: string; exam_date?: string }) =>
+    api.post<Workspace>('/api/workspaces', data),
+  delete: (id: string)    => api.del<{ deleted: string }>(`/api/workspaces/${id}`),
+  ingest: (id: string, form: FormData) =>
+    api.form<IngestResult>(`/api/workspaces/${id}/ingest`, form),
+  topics: (id: string)    => api.get<Topic[]>(`/api/workspaces/${id}/topics`),
+};
 
-// ── Study Schedule ────────────────────────────────────────────────────
-export async function downloadStudySchedule(
-  subject: string,
-  hours: number,
-  concept_difficulty: Record<string, number> = {}
-): Promise<void> {
-  const url = `${BASE_URL}/study-schedule`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subject, hours, concept_difficulty }),
-  });
-  if (!res.ok) throw new Error('Failed to generate schedule');
-  const blob = await res.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${subject}_study_schedule.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
+// Quiz
+export const quizApi = {
+  generate: (data: { workspace_id: string; topic?: string; text: string; num_questions?: number; difficulty?: string }) =>
+    api.post<{ quiz_id: string; questions: QuizQuestion[]; count: number }>('/api/quiz/generate', data),
+  submit: (data: { quiz_id: string; workspace_id: string; answers: unknown[]; time_taken?: number; subject?: string }) =>
+    api.post<Record<string, unknown>>('/api/quiz/submit', data),
+  history: (wsId: string) => api.get<QuizAttempt[]>(`/api/quiz/history/${wsId}`),
+};
 
-// ── Copilot ───────────────────────────────────────────────────────────
-export interface CopilotPayload {
-  message: string;
-  subject?: string;
-  weak_topics?: string[];
-  last_score?: number;
-  recent_summary?: string;
-}
-
-export function askCopilot(payload: CopilotPayload): Promise<{ response: string; context_used: boolean }> {
-  return request('/copilot', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
+// Content
+export const contentApi = {
+  summarize:      (text: string, subject?: string) => api.post<{ summary: string; tips: string[]; keywords: string[] }>('/api/summarize', { text, subject }),
+  keywords:       (text: string)                   => api.post<{ keywords: string[] }>('/api/keywords', { text }),
+  progress:       (wsId: string)                   => api.get<ProgressData>(`/api/progress/${wsId}`),
+  examPrediction: (wsId: string)                   => api.get<ExamPrediction>(`/api/exam-prediction/${wsId}`),
+  weakTopics:     (wsId: string)                   => api.get<WeakTopic[]>(`/api/weak-topics/${wsId}`),
+  resources:      (subject: string, topics: string[], accuracy: number) =>
+    api.post<{ resources: unknown[] }>('/api/resources', { subject, topics, accuracy }),
+};
