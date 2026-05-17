@@ -1,24 +1,17 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Link } from 'react-router-dom';
+import PageShell from '@/components/forge/PageShell';
 
-const NotFound = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
-
+export default function NotFound() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
+    <PageShell>
+      <div className="page-wrap flex flex-col items-center justify-center py-32 text-center">
+        <p className="font-mono text-6xl font-bold text-forge-rule mb-4">404</p>
+        <p className="text-sm font-medium text-ink mb-2">Page not found</p>
+        <p className="text-xs text-ink-faint mb-8">This route doesn't exist in the study OS.</p>
+        <Link to="/" className="btn-ink text-xs">
+          Back to home
+        </Link>
       </div>
-    </div>
+    </PageShell>
   );
-};
-
-export default NotFound;
+}

@@ -1,23 +1,39 @@
 import type { Config } from "tailwindcss";
+import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
-  prefix: "",
+  content: [
+    "./index.html",
+    "./src/**/*.{ts,tsx,js,jsx}",
+  ],
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
-      fontFamily: {
-        heading: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-        body: ['Inter', 'system-ui', 'sans-serif'],
-      },
       colors: {
+        paper: {
+          DEFAULT: "#F5F0E8",
+          subtle: "#FBF8F3",
+          edge: "#EDE5D8",
+          dark: "#EDE3D5",
+        },
+        ink: {
+          DEFAULT: "#1A1A1A",
+          soft: "#3A3A3A",
+          faint: "#888880",
+          ghost: "#BBBBAA",
+        },
+        forge: {
+          black: "#111111",
+          white: "#FAFAF7",
+          rule: "#D8D0C4",
+          accent: "#2A2A2A",
+        },
+        status: {
+          green: "#16A34A",
+          amber: "#D97706",
+          red: "#DC2626",
+          blue: "#2563EB",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -31,10 +47,6 @@ export default {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
         },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -43,41 +55,70 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
-        warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
-        },
+      },
+      fontFamily: {
+        sans: ["'IBM Plex Sans'", ...fontFamily.sans],
+        mono: ["'IBM Plex Mono'", ...fontFamily.mono],
+        serif: ["'IBM Plex Serif'", ...fontFamily.serif],
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        xl: "calc(var(--radius) + 4px)",
-        "2xl": "calc(var(--radius) + 8px)",
+      },
+      boxShadow: {
+        "paper-xs": "0 1px 0 0 rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
+        "paper-sm": "0 1px 3px 0 rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)",
+        "paper-md": "0 4px 8px -2px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)",
+        "paper-lg": "0 8px 20px -4px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05)",
+        "ink-focus": "0 0 0 3px rgba(26,26,26,0.15)",
+      },
+      backgroundImage: {
+        "ruled-lines":
+          "repeating-linear-gradient(transparent, transparent 23px, rgba(0,0,0,0.035) 23px, rgba(0,0,0,0.035) 24px)",
+        "dot-grid":
+          "radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)",
+      },
+      backgroundSize: {
+        "dot-grid": "20px 20px",
       },
       keyframes: {
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "slide-right": {
+          "0%": { transform: "translateX(-8px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        "scale-in": {
+          "0%": { transform: "scale(0.96)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "blink": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -86,17 +127,18 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        shimmer: {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" },
-        },
       },
       animation: {
+        "fade-up": "fade-up 0.4s ease-out forwards",
+        "fade-in": "fade-in 0.3s ease-out forwards",
+        "slide-right": "slide-right 0.3s ease-out forwards",
+        "scale-in": "scale-in 0.25s ease-out forwards",
+        "blink": "blink 1.1s step-end infinite",
+        "shimmer": "shimmer 2s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        shimmer: "shimmer 2s linear infinite",
       },
     },
   },
-  plugins: [import('tailwindcss-animate').then(mod => mod.default)],
+  plugins: [require("tailwindcss-animate")],
 } satisfies Config;

@@ -1,33 +1,44 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-venv/
-env/
-.env
+.Python
 *.egg-info/
-
-# Node
-node_modules/
 dist/
-.next/
+build/
+.eggs/
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build output
+frontend/dist/
+frontend/.vite/
 
 # Logs
 *.log
+app_errors.log
 
-# OS
+# IDE
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-# VS Code
-.vscode/
+# ML artifacts (large binary — store in object storage)
+backend/models/*.pkl
+backend/models/*.h5
+backend/models/*.pt
+*.joblib
 
-# Secrets
-backend/.env
-.env.local
-.env.production
-
-# Model artifacts (regenerated on startup)
-backend/data/*.pkl
-backend/data/uploads/
+# Jupyter checkpoints
+.ipynb_checkpoints/
