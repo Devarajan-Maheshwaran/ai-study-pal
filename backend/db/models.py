@@ -1,16 +1,11 @@
-"""SQLAlchemy ORM models matching the Phase 2 schema.
+"""SQLAlchemy ORM models for StudyForge.
 
-Tables: workspaces, topics, documents, document_chunks,
-        quizzes, quiz_attempts, agent_logs
+Phase 6: added user_id (owner) column to Workspace for multi-tenant isolation.
 """
-from sqlalchemy import (
-    Column, String, Integer, Float, Text,
-    DateTime, ForeignKey, JSON, Boolean
-)
-from sqlalchemy.orm import relationship
-from datetime import datetime
 import uuid
-
+from datetime import datetime
+from sqlalchemy import Column, String, Float, Integer, DateTime, Text, ForeignKey, JSON
+from sqlalchemy.orm import relationship
 from backend.db.database import Base
 
 
@@ -21,96 +16,78 @@ def _uuid():
 class Workspace(Base):
     __tablename__ = "workspaces"
 
-    id          = Column(String, primary_key=True, default=_uuid)
-    name        = Column(String(200), nullable=False)
-    subject     = Column(String(200), default="General")
-    exam_date   = Column(String(50), nullable=True)
-    created_at  = Column(DateTime, default=datetime.utcnow)
+    id         = Column(String,      primary_key=True, default=_uuid)
+    user_id    = Column(String(100), nullable=False, index=True, default="dev")  # owner
+    name       = Column(String(200), nullable=False)
+    subject    = Column(String(200), default="General")
+    exam_date  = Column(String(50),  nullable=True)
+    created_at = Column(DateTime,    default=datetime.utcnow)
 
-    topics      = relationship("Topic",    back_populates="workspace", cascade="all, delete")
-    documents   = relationship("Document", back_populates="workspace", cascade="all, delete")
-    quizzes     = relationship("Quiz",     back_populates="workspace", cascade="all, delete")
+    topics    = relationship("Topic",    back_populates="workspace", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="workspace", cascade="all, delete-orphan")
 
 
 class Topic(Base):
     __tablename__ = "topics"
 
-    id              = Column(String, primary_key=True, default=_uuid)
-    workspace_id    = Column(String, ForeignKey("workspaces.id"), nullable=False)
-    name            = Column(String(200), nullable=False)
-    mastery_score   = Column(Float, default=0.0)
-    difficulty_score= Column(Float, default=0.5)
-    created_at      = Column(DateTime, default=datetime.utcnow)
+    id               = Column(String, primary_key=True, default=_uuid)
+    workspace_id     = Column(String, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    name             = Column(String(300), nullable=False)
+    mastery_score    = Column(Float,   default=0.0)
+    difficulty_score = Column(Float,   default=0.5)
+    created_at       = Column(DateTime, default=datetime.utcnow)
 
-    workspace       = relationship("Workspace", back_populates="topics")
+    workspace = relationship("Workspace", back_populates="topics")
 
 
 class Document(Base):
     __tablename__ = "documents"
 
-    id           = Column(String, primary_key=True, default=_uuid)
-    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
-    title        = Column(String(300), nullable=False)
-    source_type  = Column(String(30), default="text")  # text | pdf | youtube | url
-    raw_text     = Column(Text, nullable=True)
+    id           = Column(String,  primary_key=True, default=_uuid)
+    workspace_id = Column(String,  ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    title        = Column(String(400), nullable=False)
+    source_type  = Column(String(50),  default="text")
+    raw_text     = Column(Text,    nullable=True)
     word_count   = Column(Integer, default=0)
     uploaded_at  = Column(DateTime, default=datetime.utcnow)
 
-    workspace    = relationship("Workspace", back_populates="documents")
-    chunks       = relationship("DocumentChunk", back_populates="document", cascade="all, delete")
+    workspace = relationship("Workspace", back_populates="documents")
+    chunks    = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
 
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
 
-    id           = Column(String, primary_key=True, default=_uuid)
-    document_id  = Column(String, ForeignKey("documents.id"), nullable=False)
-    workspace_id = Column(String, nullable=False)
-    chunk_index  = Column(Integer, default=0)
-    chunk_text   = Column(Text, nullable=False)
-    chroma_id    = Column(String, nullable=True)  # ID in ChromaDB collection
+    id          = Column(String,  primary_key=True, default=_uuid)
+    document_id = Column(String,  ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    text        = Column(Text,    nullable=False)
 
-    document     = relationship("Document", back_populates="chunks")
+    document = relationship("Document", back_populates="chunks")
 
 
 class Quiz(Base):
     __tablename__ = "quizzes"
 
-    id           = Column(String, primary_key=True, default=_uuid)
-    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
-    topic_name   = Column(String(200), default="General")
-    difficulty   = Column(String(20), default="mixed")
-    questions    = Column(JSON, nullable=False)  # list of question dicts
+    id           = Column(String,   primary_key=True, default=_uuid)
+    workspace_id = Column(String,   ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    questions    = Column(JSON,     nullable=False, default=list)
     created_at   = Column(DateTime, default=datetime.utcnow)
 
-    workspace    = relationship("Workspace", back_populates="quizzes")
-    attempts     = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete")
+    attempts = relationship("QuizAttempt", back_populates="quiz", cascade="all, delete-orphan")
 
 
 class QuizAttempt(Base):
     __tablename__ = "quiz_attempts"
 
-    id           = Column(String, primary_key=True, default=_uuid)
-    quiz_id      = Column(String, ForeignKey("quizzes.id"), nullable=False)
-    workspace_id = Column(String, nullable=False)
-    score        = Column(Float, default=0.0)   # 0.0 – 1.0
-    correct      = Column(Integer, default=0)
-    total        = Column(Integer, default=0)
-    time_taken   = Column(Integer, nullable=True)  # seconds
-    answers      = Column(JSON, nullable=True)
-    ml_feedback  = Column(JSON, nullable=True)  # output of quiz/submit ML pipeline
+    id           = Column(String,   primary_key=True, default=_uuid)
+    quiz_id      = Column(String,   ForeignKey("quizzes.id",      ondelete="CASCADE"), nullable=False)
+    workspace_id = Column(String,   ForeignKey("workspaces.id",   ondelete="CASCADE"), nullable=False)
+    score        = Column(Float,    default=0.0)
+    correct      = Column(Integer,  default=0)
+    total        = Column(Integer,  default=0)
+    time_taken   = Column(Integer,  nullable=True)
+    ml_feedback  = Column(JSON,     nullable=True)
     submitted_at = Column(DateTime, default=datetime.utcnow)
 
-    quiz         = relationship("Quiz", back_populates="attempts")
-
-
-class AgentLog(Base):
-    __tablename__ = "agent_logs"
-
-    id           = Column(String, primary_key=True, default=_uuid)
-    workspace_id = Column(String, nullable=True)
-    action       = Column(String(100), nullable=False)
-    tool_used    = Column(String(100), nullable=True)
-    latency_ms   = Column(Integer, nullable=True)
-    payload      = Column(JSON, nullable=True)
-    created_at   = Column(DateTime, default=datetime.utcnow)
+    quiz = relationship("Quiz", back_populates="attempts")

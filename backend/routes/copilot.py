@@ -1,17 +1,26 @@
-"""Copilot + study schedule routes."""
+"""Copilot chat + study planner endpoints.
+
+Phase 6: @require_auth on all routes + scoped db_session.
+"""
 from flask import Blueprint, request, jsonify, send_file
 from io import BytesIO
 
-from backend.db.database import SessionLocal
-from backend.db.models import QuizAttempt, Topic
+from backend.db.database import db_session
+from backend.db.models import QuizAttempt, Topic, Workspace
 from backend.services.copilot_service import get_copilot_response
 from backend.services.schedule_service import generate_study_schedule_csv
 from backend.services.retrieval_service import search_workspace
+from backend.middleware.auth import require_auth, current_user_id
 
 bp = Blueprint("copilot", __name__)
 
 
+def _db():
+    return db_session
+
+
 @bp.post("/api/copilot")
+@require_auth
 def copilot():
     data         = request.json or {}
     message      = (data.get("message") or "").strip()
@@ -19,53 +28,49 @@ def copilot():
     if not message:
         return jsonify({"error": "message required"}), 400
 
-    db = SessionLocal()
-    try:
-        # Pull context from DB
-        weak_topics, last_score, recent_summary = [], None, ""
+    weak_topics, last_score, recent_summary = [], None, ""
 
-        if workspace_id:
-            topics = db.query(Topic).filter_by(workspace_id=workspace_id).filter(Topic.mastery_score < 0.5).order_by(Topic.mastery_score).all()
-            weak_topics = [t.name for t in topics]
+    if workspace_id:
+        ws = _db().query(Workspace).filter_by(id=workspace_id, user_id=current_user_id()).first()
+        if not ws:
+            return jsonify({"error": "Workspace not found"}), 404
 
-            latest = db.query(QuizAttempt).filter_by(workspace_id=workspace_id).order_by(QuizAttempt.submitted_at.desc()).first()
-            if latest:
-                last_score = round(latest.score * 100, 1)
+        topics = _db().query(Topic).filter_by(workspace_id=workspace_id).filter(Topic.mastery_score < 0.5).order_by(Topic.mastery_score).all()
+        weak_topics = [t.name for t in topics]
 
-            # Vector-search workspace docs for relevant context
-            chunks = search_workspace(workspace_id, message, n_results=3)
-            recent_summary = " ".join(c["text"] for c in chunks)
+        latest = _db().query(QuizAttempt).filter_by(workspace_id=workspace_id).order_by(QuizAttempt.submitted_at.desc()).first()
+        if latest:
+            last_score = round(latest.score * 100, 1)
 
-        result = get_copilot_response(
-            message=message,
-            subject=data.get("subject", "General"),
-            weak_topics=weak_topics,
-            last_score=last_score,
-            recent_summary=recent_summary,
-        )
-        return jsonify(result)
-    finally:
-        db.close()
+        chunks = search_workspace(workspace_id, message, n_results=3)
+        recent_summary = " ".join(c["text"] for c in chunks)
+
+    result = get_copilot_response(
+        message=message,
+        subject=data.get("subject", "General"),
+        weak_topics=weak_topics,
+        last_score=last_score,
+        recent_summary=recent_summary,
+    )
+    return jsonify(result)
 
 
 @bp.post("/api/planner")
+@require_auth
 def planner():
     data         = request.json or {}
     workspace_id = data.get("workspace_id", "")
     hours        = float(data.get("hours", 4))
-
+    subject      = data.get("subject", "General")
     weights: dict = {}
     if workspace_id:
-        db = SessionLocal()
-        try:
-            topics = db.query(Topic).filter_by(workspace_id=workspace_id).all()
-            weights = {t.name: t.difficulty_score for t in topics}
-        finally:
-            db.close()
+        ws = _db().query(Workspace).filter_by(id=workspace_id, user_id=current_user_id()).first()
+        if not ws:
+            return jsonify({"error": "Workspace not found"}), 404
+        topics  = _db().query(Topic).filter_by(workspace_id=workspace_id).all()
+        weights = {t.name: t.difficulty_score for t in topics}
     else:
         weights = data.get("concept_difficulty", {})
-
-    subject  = data.get("subject", "General")
     csv_data = generate_study_schedule_csv(subject, hours, weights)
     buf = BytesIO(csv_data.encode())
     buf.seek(0)
@@ -73,34 +78,25 @@ def planner():
 
 
 @bp.post("/api/planner/preview")
+@require_auth
 def planner_preview():
-    """Returns schedule as JSON (no download) for the frontend preview table."""
     data         = request.json or {}
     workspace_id = data.get("workspace_id", "")
     hours        = float(data.get("hours", 4))
     subject      = data.get("subject", "General")
-
     weights: dict = {}
     if workspace_id:
-        db = SessionLocal()
-        try:
-            topics = db.query(Topic).filter_by(workspace_id=workspace_id).all()
-            weights = {t.name: t.difficulty_score for t in topics}
-        finally:
-            db.close()
-
-    # Build a simple JSON schedule from weights
+        ws = _db().query(Workspace).filter_by(id=workspace_id, user_id=current_user_id()).first()
+        if not ws:
+            return jsonify({"error": "Workspace not found"}), 404
+        topics  = _db().query(Topic).filter_by(workspace_id=workspace_id).all()
+        weights = {t.name: t.difficulty_score for t in topics}
     if not weights:
         return jsonify({"schedule": [], "message": "No topic data — ingest study material first."})
-
     total_weight = sum(weights.values()) or 1
-    schedule = []
-    day = 1
+    schedule, day = [], 1
     for topic, diff in sorted(weights.items(), key=lambda x: -x[1]):
-        mins = round((diff / total_weight) * hours * 60)
-        if mins < 5:
-            mins = 5
+        mins = max(5, round((diff / total_weight) * hours * 60))
         schedule.append({"day": day, "topic": topic, "minutes": mins, "difficulty": round(diff, 2)})
         day += 1
-
     return jsonify({"schedule": schedule, "total_hours": hours, "subject": subject})
