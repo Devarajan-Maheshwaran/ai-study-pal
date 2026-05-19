@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/AppShell';
 import LandingPage            from './pages/LandingPage';
 import DocsPage               from './pages/DocsPage';
+import AuthPage               from './pages/AuthPage';
 import WorkspaceListPage      from './pages/WorkspaceListPage';
 import WorkspaceDashboardPage from './pages/WorkspaceDashboardPage';
 import StudyMaterialPage      from './pages/StudyMaterialPage';
@@ -20,8 +21,9 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <Routes>
         {/* Public routes — no sidebar */}
-        <Route path="/"    element={<LandingPage />} />
+        <Route path="/"     element={<LandingPage />} />
         <Route path="/docs" element={<DocsPage />} />
+        <Route path="/auth" element={<AuthPage />} />
 
         {/* App routes — with sidebar via AppShell */}
         <Route element={<AppShell />}>

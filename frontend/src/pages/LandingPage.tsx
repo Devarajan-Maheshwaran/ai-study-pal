@@ -39,6 +39,39 @@ const stats = [
   { value: '0', label: 'External data sent' },
 ];
 
+const problems = [
+  {
+    n: '01',
+    title: 'Disconnected tools',
+    desc: 'Notes, quizzes, flashcards, and analytics live in different apps. You never get a single picture of how prepared you are.',
+  },
+  {
+    n: '02',
+    title: 'Generic AI answers',
+    desc: 'Most AI tools ignore your syllabus and answer from the whole internet. You cannot trust them for exam-specific revision.',
+  },
+  {
+    n: '03',
+    title: 'No feedback loop',
+    desc: 'You take random quizzes, but there is no system that continuously redirects you toward weak topics and adjusts your plan.',
+  },
+];
+
+const techCards = [
+  {
+    label: 'Frontend',
+    desc: 'React 18 + TypeScript + Vite with a single-page app router. Tailwind CSS drives the full design system.',
+  },
+  {
+    label: 'Backend',
+    desc: 'Flask app factory deployed via Gunicorn on Railway, backed by Supabase Postgres for persistent storage.',
+  },
+  {
+    label: 'AI & Parsing',
+    desc: 'PyMuPDF for PDFs, youtube-transcript-api for lectures, and scikit-learn / NLTK models that run entirely on your backend.',
+  },
+];
+
 export default function LandingPage() {
   const navigate        = useNavigate();
   const { theme, toggle } = useTheme();
@@ -70,8 +103,8 @@ export default function LandingPage() {
                 {theme === 'dark' ? <SunIcon size={17} /> : <MoonIcon size={17} />}
               </motion.div>
             </button>
-            <button onClick={() => navigate('/workspaces')} className="btn-primary text-sm">
-              Launch App <ArrowRightIcon size={15} />
+            <button onClick={() => navigate('/auth')} className="btn-primary text-sm">
+              Get started <ArrowRightIcon size={15} />
             </button>
           </div>
         </div>
@@ -97,8 +130,11 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button onClick={() => navigate('/workspaces')} className="btn-primary px-8 py-3 text-base">
-              Start for free <ArrowRightIcon size={16} />
+            <button onClick={() => navigate('/auth')} className="btn-primary px-8 py-3 text-base">
+              Get started <ArrowRightIcon size={16} />
+            </button>
+            <button onClick={() => navigate('/workspaces')} className="btn-ghost px-6 py-3 text-base">
+              Continue without login
             </button>
             <a href="https://github.com/Devarajan-Maheshwaran/ai-study-pal"
               target="_blank" rel="noopener noreferrer"
@@ -107,6 +143,32 @@ export default function LandingPage() {
             </a>
           </div>
         </motion.div>
+      </section>
+
+      {/* ── Problem / Pain points ──────────────────────── */}
+      <section className="pb-10 px-5 max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <p className="label-section mb-3">The problem</p>
+          <h2 className="font-syne text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-3">
+            Studying is noisy, progress is invisible
+          </h2>
+          <p className="text-[var(--text-muted)] max-w-2xl mx-auto">
+            Notes everywhere, random YouTube videos, quizzes in other apps. It is hard to see what you
+            actually know and what to revise next.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          {problems.map((p, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }} viewport={{ once: true }}>
+              <SpotlightCard className="p-5 h-full">
+                <p className="label-section mb-2">{p.n}</p>
+                <h3 className="font-syne font-semibold text-[var(--text-primary)] mb-2">{p.title}</h3>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{p.desc}</p>
+              </SpotlightCard>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       {/* ── Stats ──────────────────────────────────────── */}
@@ -128,6 +190,21 @@ export default function LandingPage() {
       <section className="py-8 px-5">
         <p className="label-section text-center mb-5">Built with</p>
         <LogoLoop items={techStack} speed={32} />
+      </section>
+
+      {/* ── Tech detail cards ──────────────────────────── */}
+      <section className="py-6 px-5 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-4">
+          {techCards.map((t, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }} viewport={{ once: true }}>
+              <SpotlightCard className="p-5 h-full">
+                <p className="label-section mb-2">{t.label}</p>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{t.desc}</p>
+              </SpotlightCard>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       {/* ── Features ───────────────────────────────────── */}
@@ -187,11 +264,16 @@ export default function LandingPage() {
             Ready to study smarter?
           </h2>
           <p className="text-[var(--text-muted)] mb-8 max-w-md mx-auto">
-            No account required. Create your first workspace and start in under 30 seconds.
+            Create your first workspace and start in under 30 seconds.
           </p>
-          <button onClick={() => navigate('/workspaces')} className="btn-primary px-10 py-3.5 text-base">
-            Open StudyPal <ArrowRightIcon size={16} />
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button onClick={() => navigate('/auth')} className="btn-primary px-10 py-3.5 text-base">
+              Get started <ArrowRightIcon size={16} />
+            </button>
+            <button onClick={() => navigate('/workspaces')} className="btn-ghost px-8 py-3.5 text-base">
+              Skip to app <ArrowRightIcon size={16} />
+            </button>
+          </div>
         </motion.div>
       </section>
 
