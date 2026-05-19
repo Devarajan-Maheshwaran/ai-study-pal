@@ -1,19 +1,27 @@
 import { useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Upload, FileText, Youtube, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
-import PaperCard from '@/components/forge/PaperCard';
-import EmptyState from '@/components/forge/EmptyState';
+import { motion, AnimatePresence } from 'framer-motion';
+import { SpotlightCard } from '@/components/reactbits/SpotlightCard';
+import {
+  UploadIcon, BookIcon, CloseIcon, CheckIcon,
+} from '@/components/icons';
 import { useWorkspaceDetail, useIngestDocument } from '@/hooks/useWorkspace';
 import type { IngestResult } from '@/lib/api';
 
 type SourceType = 'text' | 'pdf' | 'youtube';
+
+const sourceOptions: { key: SourceType; label: string }[] = [
+  { key: 'text',    label: 'Plain Text' },
+  { key: 'pdf',     label: 'PDF Upload' },
+  { key: 'youtube', label: 'YouTube URL' },
+];
 
 export default function StudyMaterialPage() {
   const { id = '' } = useParams();
   const { data: ws, isLoading } = useWorkspaceDetail(id);
   const ingest = useIngestDocument(id);
 
-  const [source, setSource]   = useState<SourceType>('text');
+  const [source,    setSource]    = useState<SourceType>('text');
   const [textInput, setTextInput] = useState('');
   const [urlInput,  setUrlInput]  = useState('');
   const [title,     setTitle]     = useState('');
@@ -42,127 +50,212 @@ export default function StudyMaterialPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      {/* Source selector */}
-      <PaperCard>
-        <p className="section-label mb-4">add study material</p>
-        <div className="flex gap-2 mb-4">
-          {(['text', 'pdf', 'youtube'] as SourceType[]).map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSource(s)}
-              className={source === s ? 'tag-solid' : 'tag cursor-pointer hover:bg-paper-dark'}
-            >
-              {s === 'text' ? <FileText className="h-3 w-3" /> : s === 'pdf' ? <Upload className="h-3 w-3" /> : <Youtube className="h-3 w-3" />}
-              {s === 'youtube' ? 'YouTube' : s.toUpperCase()}
-            </button>
-          ))}
-        </div>
+    <div
+      className="min-h-screen px-5 py-8"
+      style={{ background: 'var(--bg)' }}
+    >
+      <div className="max-w-3xl mx-auto space-y-6">
 
-        <form onSubmit={handleIngest} className="space-y-3">
-          <input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Document title (optional)"
-            className="w-full rounded-md border border-forge-rule bg-paper px-3 py-2 text-sm text-ink placeholder-ink-ghost outline-none focus:ring-2 focus:ring-ink/15"
-          />
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <p className="label-section mb-1">Workspace</p>
+          <h1 className="font-syne text-2xl font-bold text-[var(--text-primary)]">Study Material</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            Upload documents, paste notes, or add a YouTube video. All content is embedded into ChromaDB for AI search.
+          </p>
+        </motion.div>
 
-          {source === 'text' && (
-            <textarea
-              value={textInput}
-              onChange={e => setTextInput(e.target.value)}
-              placeholder="Paste your notes here (min 20 words)…"
-              rows={6}
-              className="w-full rounded-md border border-forge-rule bg-paper px-3 py-2 text-sm text-ink placeholder-ink-ghost outline-none focus:ring-2 focus:ring-ink/15 resize-y"
-              required
-            />
-          )}
-          {source === 'pdf' && (
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf"
-              required
-              className="block text-xs text-ink-faint file:mr-3 file:rounded-full file:border file:border-forge-rule file:bg-paper-subtle file:px-3 file:py-1 file:text-xs file:font-mono"
-            />
-          )}
-          {source === 'youtube' && (
-            <input
-              value={urlInput}
-              onChange={e => setUrlInput(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              className="w-full rounded-md border border-forge-rule bg-paper px-3 py-2 text-sm text-ink placeholder-ink-ghost outline-none focus:ring-2 focus:ring-ink/15"
-              required
-            />
-          )}
+        {/* Upload card */}
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+          <SpotlightCard className="p-6">
+            <p className="font-syne font-semibold text-[var(--text-primary)] mb-4">Add Study Material</p>
 
-          <button type="submit" disabled={ingest.isPending} className="btn-ink text-xs">
-            {ingest.isPending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Ingesting…</> : 'Ingest document'}
-          </button>
-          {ingest.isError && (
-            <p className="text-xs text-status-red flex items-center gap-1">
-              <AlertCircle className="h-3.5 w-3.5" />{ingest.error?.message}
-            </p>
-          )}
-        </form>
-      </PaperCard>
-
-      {/* Last ingest result */}
-      {lastResult && (
-        <PaperCard className="animate-scale-in relative">
-          <button type="button" onClick={() => setLastResult(null)} className="absolute top-3 right-3 text-ink-ghost hover:text-ink">
-            <X className="h-4 w-4" />
-          </button>
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle2 className="h-4 w-4 text-status-green" />
-            <p className="text-sm font-medium text-ink">Ingested: {lastResult.title}</p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3 text-xs text-ink-faint font-mono mb-3">
-            <span>{lastResult.word_count} words</span>
-            <span>{lastResult.chunk_count} chunks</span>
-            <span>{lastResult.topics.length} topics detected</span>
-          </div>
-          {lastResult.summary && (
-            <div className="mt-2">
-              <p className="section-label mb-1">auto-summary</p>
-              <p className="text-xs text-ink-faint leading-relaxed">{lastResult.summary}</p>
-            </div>
-          )}
-          {lastResult.tips.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {lastResult.tips.map((t, i) => (
-                <li key={i} className="text-xs text-ink-faint">• {t}</li>
+            {/* Source selector */}
+            <div className="flex gap-2 mb-5">
+              {sourceOptions.map(o => (
+                <button
+                  key={o.key}
+                  type="button"
+                  onClick={() => setSource(o.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    source === o.key
+                      ? 'bg-[var(--text-primary)] text-[var(--bg)]'
+                      : 'bg-[var(--bg-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  {o.label}
+                </button>
               ))}
-            </ul>
-          )}
-        </PaperCard>
-      )}
+            </div>
 
-      {/* Document list */}
-      <PaperCard>
-        <p className="section-label mb-4">uploaded sources</p>
-        {isLoading ? (
-          <div className="flex items-center gap-2 text-xs text-ink-faint"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</div>
-        ) : ws && ws.documents.length > 0 ? (
-          <div className="divide-y divide-forge-rule">
-            {ws.documents.map(d => (
-              <div key={d.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-ink">{d.title}</p>
-                  <p className="text-[11px] font-mono text-ink-ghost">{d.source_type} · {d.word_count} words · {new Date(d.uploaded_at).toLocaleDateString()}</p>
+            <form onSubmit={handleIngest} className="space-y-3">
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Document title (optional)"
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+
+              {source === 'text' && (
+                <textarea
+                  value={textInput}
+                  onChange={e => setTextInput(e.target.value)}
+                  placeholder="Paste your notes here (minimum 20 words)..."
+                  rows={6}
+                  required
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-y"
+                  style={{
+                    background: 'var(--bg)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              )}
+              {source === 'pdf' && (
+                <div
+                  className="rounded-xl px-4 py-5 flex flex-col items-center justify-center gap-2 cursor-pointer"
+                  style={{ border: '1.5px dashed var(--border-color)', background: 'var(--bg)' }}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <UploadIcon size={22} className="text-[var(--text-faint)]" />
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {fileRef.current?.files?.[0]?.name ?? 'Click to select a PDF'}
+                  </p>
+                  <input ref={fileRef} type="file" accept=".pdf" required className="hidden" />
                 </div>
+              )}
+              {source === 'youtube' && (
+                <input
+                  value={urlInput}
+                  onChange={e => setUrlInput(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  required
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  style={{
+                    background: 'var(--bg)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              )}
+
+              <button
+                type="submit"
+                disabled={ingest.isPending}
+                className="btn-primary w-full justify-center"
+              >
+                {ingest.isPending ? (
+                  <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12a9 9 0 1 1-6.22-8.56" />
+                  </svg>
+                ) : (
+                  <UploadIcon size={16} />
+                )}
+                {ingest.isPending ? 'Ingesting...' : 'Ingest Document'}
+              </button>
+
+              {ingest.isError && (
+                <p className="text-xs" style={{ color: '#dc2626' }}>
+                  {ingest.error?.message}
+                </p>
+              )}
+            </form>
+          </SpotlightCard>
+        </motion.div>
+
+        {/* Last ingest result */}
+        <AnimatePresence>
+          {lastResult && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.25 }}
+              className="relative rounded-2xl p-5"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
+            >
+              <button
+                onClick={() => setLastResult(null)}
+                className="absolute top-4 right-4 text-[var(--text-faint)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <CloseIcon size={16} />
+              </button>
+              <div className="flex items-center gap-2 mb-3">
+                <CheckIcon size={16} style={{ color: '#16a34a' }} />
+                <p className="font-syne font-semibold text-[var(--text-primary)] text-sm">
+                  Ingested: {lastResult.title}
+                </p>
               </div>
-            ))}
+              <div className="flex gap-4 mb-3">
+                {[
+                  { label: 'Words',  value: lastResult.word_count.toLocaleString() },
+                  { label: 'Chunks', value: lastResult.chunk_count },
+                  { label: 'Topics', value: lastResult.topics.length },
+                ].map(stat => (
+                  <div key={stat.label}>
+                    <p className="label-section">{stat.label}</p>
+                    <p className="font-syne font-bold text-[var(--text-primary)]">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+              {lastResult.summary && (
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  {lastResult.summary}
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Document list */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+          <div
+            className="rounded-2xl p-5"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}
+          >
+            <p className="font-syne font-semibold text-[var(--text-primary)] mb-4">Uploaded Sources</p>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map(i => <div key={i} className="skeleton h-12 w-full rounded-xl" />)}
+              </div>
+            ) : ws && ws.documents.length > 0 ? (
+              <div className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
+                {ws.documents.map(d => (
+                  <div key={d.id} className="py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)' }}
+                      >
+                        <BookIcon size={14} className="text-[var(--text-muted)]" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[var(--text-primary)]">{d.title}</p>
+                        <p className="text-xs text-[var(--text-faint)] font-mono">
+                          {d.source_type} · {d.word_count} words · {new Date(d.uploaded_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                <UploadIcon size={28} className="text-[var(--text-faint)]" />
+                <p className="text-sm text-[var(--text-muted)] max-w-xs">
+                  No sources yet. Upload a PDF, paste notes, or add a YouTube link above.
+                </p>
+              </div>
+            )}
           </div>
-        ) : (
-          <EmptyState
-            icon={<FileText className="h-7 w-7" />}
-            title="No sources yet"
-            description="Upload a PDF, paste notes, or add a YouTube link. The pipeline extracts text, chunks it, embeds it into ChromaDB, and builds a topic map."
-          />
-        )}
-      </PaperCard>
+        </motion.div>
+
+      </div>
     </div>
   );
 }
