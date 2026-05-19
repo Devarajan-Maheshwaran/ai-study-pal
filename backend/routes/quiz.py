@@ -1,7 +1,4 @@
-"""Quiz generation, submission, and history endpoints.
-
-Phase 6: @require_auth on all routes + scoped db_session.
-"""
+"""Quiz endpoints."""
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import uuid

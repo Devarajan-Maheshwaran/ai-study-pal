@@ -1,125 +1,67 @@
-# StudyForge — AI Study Platform
+# AI Study Pal (StudyForge)
 
-An end-to-end exam preparation platform powered by on-device ML models (no external AI API).
-Upload notes → auto-summarize → generate adaptive quizzes → track mastery → predict exam score.
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?logo=vercel&logoColor=white)](YOUR_VERCEL_DEPLOYMENT_URL_PLACEHOLDER)
+[![Railway Deployment](https://img.shields.io/badge/Railway-Running-blue?logo=railway&logoColor=white)](YOUR_RAILWAY_BACKEND_URL_PLACEHOLDER)
 
-## Tech Stack
+An end-to-end exam preparation platform powered by high-smartness, 100% offline, local NLP algorithms (no external API keys, zero Hugging Face downloads). 
 
-| Layer | Stack |
-|---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router v6 |
-| Backend | Python 3.11, Flask 3, SQLAlchemy 2, Supabase Postgres |
-| Vector DB | ChromaDB (local persistent) |
-| Embeddings | `all-MiniLM-L6-v2` via sentence-transformers (100% local) |
-| ML Models | scikit-learn + NLTK (NB01–NB10 notebook models) |
-| Deploy | Vercel (frontend) + Railway / Render (backend) |
+Upload notes, generate adaptive quizzes, analyze study schedules, track topic mastery, use spaced repetition, and chat with a local AI copilot.
 
-## Project Structure
+---
 
+## 🚀 Deployment Guide
+
+### Frontend: Vercel
+1. Import the repository into [Vercel](https://vercel.com).
+2. Set **Root Directory** to `frontend`.
+3. Set the Framework Preset to **Vite**.
+4. Configure the Environment Variable:
+   * `VITE_API_URL` = `https://your-backend-railway-url.railway.app`
+5. Click **Deploy**.
+
+### Backend: Railway
+1. Create a new service in [Railway](https://railway.app) from this GitHub repository.
+2. In the service settings, Railway will automatically find the `Procfile` in the workspace root.
+3. Configure the Environment Variables:
+   * `PORT` = `5000` (dynamic port assigned by Railway automatically)
+   * `CORS_ORIGINS` = `https://your-frontend-vercel-url.vercel.app`
+   * `DATABASE_URL` = `postgresql://...` (Highly recommended for persistence, or omit to fall back to transient SQLite)
+   * `AUTH_ENABLED` = `false` (Set to `true` if integrating user-specific Supabase auth)
+4. Click **Deploy**.
+
+---
+
+## ❓ Do We Need Supabase for a Database?
+**No, Supabase is not required.**
+* **Development/Simple Setup:** The backend automatically falls back to a local SQLite database (`backend/data/studyforge.db`) if no `DATABASE_URL` is set.
+* **Production/Railway Setup:** Because Railway containers have ephemeral disks (data resets on restart), you should use a persistent database. Instead of Supabase, you can simply provision a **PostgreSQL** database directly inside Railway and paste its connection string into `DATABASE_URL`. The SQLAlchemy ORM handles this automatically.
+* **Authentication:** The auth middleware integrates with Supabase JWT tokens when `AUTH_ENABLED=true`. If auth is disabled (`AUTH_ENABLED=false`), the app runs smoothly in single-tenant mode using a mock developer user.
+
+---
+
+## 🧠 Local Heuristic & ML Architecture
+This platform runs purely offline on your server using optimized mathematical algorithms:
+* **Degree Centrality Summarizer:** Computes a sentence cosine-similarity matrix using TF-IDF representation, ranking sentence importance based on network centrality with a square-root length normalization penalty to avoid choosing overly long sentences.
+* **Bloom's Taxonomy Classifier:** Classifies quiz difficulties (`easy`, `medium`, `hard`) using custom readability metrics (average word size, sentence complexity) paired with a cognitive verb lookup dictionary.
+* **POS-Aligned Distractor Generator:** Creates contextually convincing multiple-choice distractors by matching target Part-Of-Speech (POS) tags, preserving casing, and generating nearby numeric values for digits.
+* **TF-IDF Vector Search:** Performs local workspace retrieval by computing cosine-similarities over a TF-IDF vector matrix in-memory, replacing heavy transformer dependencies.
+
+---
+
+## 🛠️ Project Structure
 ```
-├── frontend/          # Vite + React app
-│   ├── src/
-│   │   ├── components/forge/   # Design system components
-│   │   ├── pages/              # 8 workspace pages
-│   │   ├── hooks/useWorkspace.ts
-│   │   └── lib/api.ts          # Typed API client
-│   └── vercel.json
 ├── backend/
-│   ├── app.py                  # Flask factory
-│   ├── config.py
+│   ├── app.py             # Flask App Factory
+│   ├── config.py          # App Configuration
 │   ├── db/
-│   │   ├── database.py         # SQLAlchemy engine (Supabase / SQLite fallback)
-│   │   ├── models.py           # ORM: workspaces, topics, documents, quizzes, attempts
-│   │   └── migrate.py          # One-time table creation
-│   ├── routes/
-│   │   ├── workspaces.py       # CRUD + /ingest
-│   │   ├── quiz.py             # generate, submit, history
-│   │   ├── content.py          # summarize, progress, weak-topics, raw-text
-│   │   ├── copilot.py          # chat + planner
-│   │   └── flashcards.py       # SM-2 spaced repetition
-│   ├── services/
-│   │   ├── ingestion_service.py   # PDF/text/YouTube → chunk → embed → ChromaDB
-│   │   ├── retrieval_service.py   # Vector search
-│   │   ├── copilot_service.py     # Context-aware responses (no LLM API)
-│   │   └── ...                    # summary, schedule, resources
-│   └── models/                    # scikit-learn ML models
+│   │   ├── database.py    # Database connection & scoped sessions
+│   │   └── models.py      # SQLAlchemy schemas
+│   ├── routes/            # Workspace, Quiz, Flashcards, Copilot, & Content blueprints
+│   ├── services/          # Local ingestion, retrieval, scheduling, & summary engines
+│   └── tests/             # Pytest unit testing suite
+├── frontend/
+│   ├── src/               # React + TypeScript source code
+│   └── vite.config.ts     # Build bundler configurations
+├── Procfile               # Railway entrypoint
+└── vercel.json            # Vercel monorepo config
 ```
-
-## Local Setup
-
-### 1. Backend
-
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# Copy env template and fill in values
-cp .env.example .env
-
-# Create DB tables (SQLite by default, Postgres if DATABASE_URL is set)
-python -m backend.db.migrate
-
-# Start dev server
-python app.py
-# → running on http://localhost:5000
-```
-
-### 2. Frontend
-
-```bash
-cd frontend
-npm install
-cp .env.example .env          # sets VITE_API_URL=http://localhost:5000
-npm run dev
-# → running on http://localhost:5173
-```
-
-## Supabase Setup (for production)
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Go to **Settings → Database** → copy the connection string
-3. Add to `backend/.env`:
-   ```
-   DATABASE_URL=postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres
-   SUPABASE_URL=https://<ref>.supabase.co
-   SUPABASE_SERVICE_KEY=<service_role_key>
-   ```
-4. Run `python -m backend.db.migrate` once to create all tables
-
-## Vercel Deploy (frontend)
-
-1. Import repo at [vercel.com/new](https://vercel.com/new)
-2. Set **Root Directory** → `frontend`
-3. Framework preset: **Vite** | Build: `npm run build` | Output: `dist`
-4. Add env var: `VITE_API_URL=https://your-backend.railway.app`
-5. Deploy — every push to `main` auto-deploys
-
-## Backend Deploy (Railway / Render)
-
-```bash
-# Railway (recommended)
-railway login
-railway init
-railway up
-# Set all env vars from .env.example in Railway dashboard
-```
-
-The `Procfile` is already configured:
-```
-web: gunicorn 'backend.app:create_app()' --bind 0.0.0.0:$PORT --workers 2 --timeout 120
-```
-
-## Features
-
-| Feature | Model used |
-|---|---|
-| Text summarizer | Extractive NLP (TF-IDF + sentence scoring) |
-| Keyword extraction | TF-IDF |
-| MCQ generation | N-gram + distractor selection |
-| Difficulty classifier | Naive Bayes (NB01) |
-| Adaptive quiz ordering | Ability-based sort (NB04) |
-| Exam score prediction | Rolling accuracy + consistency score |
-| Spaced repetition | SM-2 algorithm |
-| Semantic search | all-MiniLM-L6-v2 + ChromaDB |
-| Copilot responses | Intent detection + context injection (no LLM API) |

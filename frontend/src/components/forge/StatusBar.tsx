@@ -1,5 +1,4 @@
-// Workspace header status strip — shows exam countdown, mastery, session stats
-// Data is placeholder in Phase 1; wired to backend in Phase 2+
+// Workspace header status strip.
 import { Calendar, Zap, Target } from 'lucide-react';
 
 interface StatusBarProps {

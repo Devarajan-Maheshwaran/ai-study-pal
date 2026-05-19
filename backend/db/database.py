@@ -1,9 +1,4 @@
-"""Database engine + session factory with scoped-session teardown support.
-
-Phase 5 fix: exposes `db_session` (scoped) for use in app teardown context.
-All route handlers should still use SessionLocal() for explicit control,
-but teardown_appcontext is registered in app.py to auto-remove scoped sessions.
-"""
+"""Database engine and scoped session setup."""
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -14,7 +9,7 @@ DATABASE_URL = os.environ.get(
     "sqlite:///" + os.path.join(os.path.dirname(__file__), "..", "data", "studyforge.db")
 )
 
-# Postgres connection pool tuning (ignored by SQLite)
+# Connection pool tuning (SQLite ignores this).
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(
     DATABASE_URL,
@@ -24,5 +19,6 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-db_session   = scoped_session(SessionLocal)   # used by teardown_appcontext
+db_session   = scoped_session(SessionLocal)   # For teardown context cleanup
 Base         = declarative_base()
+

@@ -1,62 +1,59 @@
-"""Vector search over ChromaDB for the copilot + summarize-topic flows.
-No external AI API — pure local embeddings (all-MiniLM-L6-v2).
+"""Local TF-IDF Vector Space Model (VSM) for the copilot + search flows.
+Zero external neural/transformer models — 100% local, high-precision text search.
 """
-from backend.config import config
-import os
-
-_collection = None
-_embedder   = None
-
-
-def _get_collection():
-    global _collection
-    if _collection is None:
-        try:
-            import chromadb
-            client = chromadb.PersistentClient(path=config.CHROMADB_PATH)
-            _collection = client.get_or_create_collection("studyforge_chunks")
-        except Exception as e:
-            print(f"[retrieval] ChromaDB unavailable: {e}")
-    return _collection
-
-
-def _get_embedder():
-    global _embedder
-    if _embedder is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-            _embedder = SentenceTransformer("all-MiniLM-L6-v2")
-        except Exception as e:
-            print(f"[retrieval] Embedder unavailable: {e}")
-    return _embedder
-
+from backend.db.database import db_session
+from backend.db.models import Document, DocumentChunk
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 def search_workspace(
     workspace_id: str,
     query: str,
     n_results: int = 5,
 ) -> list[dict]:
-    """Return top-n relevant chunks for a query within a workspace.
-    Falls back to empty list if ChromaDB is unavailable.
+    """Return top-n relevant chunks for a query within a workspace using local TF-IDF.
     """
-    collection = _get_collection()
-    embedder   = _get_embedder()
-    if collection is None or embedder is None:
-        return []
-
     try:
-        q_embedding = embedder.encode([query]).tolist()
-        results     = collection.query(
-            query_embeddings=q_embedding,
-            n_results=n_results,
-            where={"workspace_id": workspace_id},
+        # Fetch all chunks in this workspace
+        db = db_session()
+        chunks = (
+            db.query(DocumentChunk)
+            .join(Document)
+            .filter(Document.workspace_id == workspace_id)
+            .all()
         )
-        docs      = results.get("documents", [[]])[0]
-        distances = results.get("distances", [[]])[0]
-        return [
-            {"text": d, "relevance_score": round(1 - dist, 3)}
-            for d, dist in zip(docs, distances)
-        ]
+        
+        if not chunks:
+            return []
+            
+        texts = [c.text for c in chunks]
+        
+        # Fit TF-IDF on all chunks
+        vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
+        matrix = vectorizer.fit_transform(texts)
+        
+        # Transform query
+        query_vec = vectorizer.transform([query])
+        
+        # Compute cosine similarity
+        similarities = cosine_similarity(query_vec, matrix).flatten()
+        
+        # Get top indices
+        top_indices = np.argsort(similarities)[::-1]
+        
+        results = []
+        for idx in top_indices:
+            score = similarities[idx]
+            if score > 0.05:  # Relevance threshold
+                results.append({
+                    "text": texts[idx],
+                    "relevance_score": round(float(score), 3)
+                })
+                if len(results) >= n_results:
+                    break
+        return results
     except Exception as e:
         print(f"[retrieval] search failed: {e}")
         return []
+

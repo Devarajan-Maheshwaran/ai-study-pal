@@ -1,7 +1,4 @@
-"""Flashcard generation + SM-2 spaced-repetition review routes.
-
-Phase 6: @require_auth on all routes + scoped db_session.
-"""
+"""Flashcard and SM-2 spaced repetition routes."""
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text

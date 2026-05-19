@@ -3,8 +3,7 @@ import PageShell from '@/components/forge/PageShell';
 import StatusBar from '@/components/forge/StatusBar';
 import WorkspaceTab from '@/components/forge/WorkspaceTab';
 
-// Phase 1: static demo metadata.
-// Phase 2+: fetch from GET /api/workspaces/:id
+// Workspace metadata.
 const DEMO_META: Record<string, { name: string; subject: string; examDate: string }> = {
   'gate-2027-cse': {
     name: 'GATE 2027 — CSE',

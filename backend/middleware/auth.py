@@ -1,27 +1,4 @@
-"""JWT authentication middleware for StudyForge.
-
-Integrates with Supabase Auth (GoTrue). The frontend sends:
-  Authorization: Bearer <supabase_jwt>
-
-The middleware decodes and verifies the JWT using the project's JWT_SECRET
-(Settings > API > JWT Secret in Supabase dashboard).
-
-Usage
------
-Decorate any route with @require_auth:
-
-    from backend.middleware.auth import require_auth, current_user_id
-
-    @bp.get("/api/workspaces")
-    @require_auth
-    def list_workspaces():
-        uid = current_user_id()  # the Supabase user UUID
-        ...
-
-Set in environment:
-    JWT_SECRET=<your-supabase-jwt-secret>
-    AUTH_ENABLED=true        # set to 'false' to disable auth in local dev
-"""
+"""JWT authentication middleware for StudyForge."""
 import os
 import functools
 from flask import request, jsonify, g

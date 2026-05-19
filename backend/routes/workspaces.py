@@ -1,20 +1,4 @@
-"""Workspace CRUD + document ingestion endpoints.
-
-Phase 6 fixes:
-- @require_auth on every route
-- All queries scoped to current_user_id() for multi-tenant isolation
-- Uses db_session (scoped) instead of SessionLocal() — no try/finally needed
-
-Routes
-------
-GET    /api/workspaces            list user's workspaces
-POST   /api/workspaces            create workspace
-GET    /api/workspaces/:id        get one workspace (topics + docs)
-DELETE /api/workspaces/:id        delete workspace (owner only)
-POST   /api/workspaces/:id/ingest ingest text / PDF / YouTube
-GET    /api/workspaces/:id/topics list topics
-GET    /api/workspaces/:id/raw-text concatenated raw text from docs
-"""
+"""Workspace CRUD and document ingestion endpoints."""
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 

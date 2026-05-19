@@ -1,7 +1,4 @@
-"""SQLAlchemy ORM models for StudyForge.
-
-Phase 6: added user_id (owner) column to Workspace for multi-tenant isolation.
-"""
+"""SQLAlchemy ORM models for StudyForge."""
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Float, Integer, DateTime, Text, ForeignKey, JSON
@@ -17,11 +14,12 @@ class Workspace(Base):
     __tablename__ = "workspaces"
 
     id         = Column(String,      primary_key=True, default=_uuid)
-    user_id    = Column(String(100), nullable=False, index=True, default="dev")  # owner
+    user_id    = Column(String(100), nullable=False, index=True, default="dev")  # Owner ID
     name       = Column(String(200), nullable=False)
     subject    = Column(String(200), default="General")
     exam_date  = Column(String(50),  nullable=True)
     created_at = Column(DateTime,    default=datetime.utcnow)
+
 
     topics    = relationship("Topic",    back_populates="workspace", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="workspace", cascade="all, delete-orphan")

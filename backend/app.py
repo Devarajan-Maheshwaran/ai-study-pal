@@ -17,9 +17,6 @@ from backend.routes.content    import bp as content_bp
 from backend.routes.copilot    import bp as copilot_bp
 from backend.routes.flashcards import bp as flashcards_bp
 
-from backend.models.quiz_model import train_quiz_models
-
-
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
@@ -30,13 +27,8 @@ def create_app() -> Flask:
     # Create all tables in one place — no per-request create_all
     Base.metadata.create_all(bind=engine)
 
-    # Warm-up ML models once at startup (thread-safe, skips if already on disk)
-    try:
-        train_quiz_models()
-    except Exception as e:
-        print(f"[startup] ML warm-up skipped: {e}")
-
     for bp in (workspaces_bp, quiz_bp, content_bp, copilot_bp, flashcards_bp):
+
         app.register_blueprint(bp)
 
     # ─ Scoped session teardown: prevents connection leaks ─

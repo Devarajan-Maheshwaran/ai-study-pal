@@ -1,10 +1,4 @@
-"""Pytest fixtures for StudyForge backend tests.
-
-Fixes (Phase 7):
-- Renamed from conftests.py to conftest.py (pytest discovery)
-- Provides `client` fixture with auth context pre-populated (g.user_id = 'test-user')
-- Provides `db` fixture with an in-memory SQLite session
-"""
+"""Pytest fixtures for StudyForge tests."""
 import pytest
 from unittest.mock import patch
 
@@ -16,7 +10,7 @@ from backend.db.database import Base, engine
 def app():
     application = create_app()
     application.config["TESTING"] = True
-    # Use in-memory SQLite for tests
+    # In-memory database for testing
     application.config["DATABASE_URL"] = "sqlite:///:memory:"
     with application.app_context():
         Base.metadata.create_all(bind=engine)
@@ -25,9 +19,10 @@ def app():
 
 @pytest.fixture()
 def client(app):
-    """Test client with auth bypassed (g.user_id = 'test-user')."""
-    # Patch require_auth so every decorated route gets g.user_id = 'test-user'
+    """Test client with bypassed auth."""
+    # Patch auth check
     with patch("backend.middleware.auth._AUTH_ENABLED", False):
         with app.test_client() as c:
             with app.app_context():
                 yield c
+

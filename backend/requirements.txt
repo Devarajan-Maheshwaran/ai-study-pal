@@ -8,9 +8,6 @@ psycopg2-binary>=2.9.9
 sqlalchemy>=2.0.0
 supabase>=2.3.0
 
-# Vector DB
-chromadb>=0.4.22
-
 # Document parsing
 PyMuPDF>=1.23.0
 youtube-transcript-api>=0.6.2
@@ -22,8 +19,6 @@ scikit-learn>=1.4.0
 nltk>=3.8.1
 numpy>=1.26.0
 
-# Embeddings (local, no external API)
-sentence-transformers>=2.6.0
 
 # Utilities
 python-dotenv>=1.0.0

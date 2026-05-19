@@ -1,7 +1,4 @@
-"""Copilot chat + study planner endpoints.
-
-Phase 6: @require_auth on all routes + scoped db_session.
-"""
+"""Copilot chat and study planner endpoints."""
 from flask import Blueprint, request, jsonify, send_file
 from io import BytesIO
 

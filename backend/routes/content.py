@@ -1,7 +1,4 @@
-"""Content AI endpoints: summarize, progress, weak-topics, resources, raw-text.
-
-Phase 6: @require_auth on workspace-scoped routes + scoped db_session.
-"""
+"""Content AI endpoints."""
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 

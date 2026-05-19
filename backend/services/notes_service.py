@@ -1,11 +1,4 @@
-"""Source parsing service. Handles text, PDF, URL, and YouTube.
-
-Security fix (Phase 5): parse_url now validates that the resolved IP is a
-public unicast address, blocking SSRF attacks targeting:
-  - Cloud metadata endpoints (169.254.169.254, fd00::, etc.)
-  - Loopback / link-local / private-network addresses
-  - Unresolvable / non-HTTP schemes
-"""
+"""Source parsing service for text, PDF, URL, and YouTube."""
 import re
 import os
 import socket

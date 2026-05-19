@@ -5,11 +5,17 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter
 
-for pkg in ["punkt", "stopwords", "punkt_tab", "averaged_perceptron_tagger"]:
-    try:
-        nltk.download(pkg, quiet=True)
-    except:
-        pass
+import threading
+
+def _nltk_download():
+    for pkg in ["punkt", "stopwords", "punkt_tab", "averaged_perceptron_tagger"]:
+        try:
+            nltk.download(pkg, quiet=True)
+        except:
+            pass
+
+threading.Thread(target=_nltk_download, daemon=True).start()
+
 
 _LATEX_DISPLAY = re.compile(r"\$\$.*?\$\$", re.DOTALL)
 _LATEX_INLINE  = re.compile(r"\$[^\$]+?\$")
