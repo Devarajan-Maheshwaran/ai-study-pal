@@ -1,200 +1,215 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
+import { BlurText }     from '@/components/reactbits/BlurText';
+import { ShinyText }    from '@/components/reactbits/ShinyText';
+import { SpotlightCard } from '@/components/reactbits/SpotlightCard';
+import { LogoLoop }     from '@/components/reactbits/LogoLoop';
 import {
-  Brain, Target, Zap, TrendingUp, BarChart3,
-  BookOpen, FileText, Upload, Youtube,
-  ArrowRight, Github, Layers
-} from 'lucide-react';
-import PageShell from '@/components/forge/PageShell';
+  ArrowRightIcon, SunIcon, MoonIcon, SparkleIcon,
+  BrainIcon, FlashIcon, ChartIcon, BookIcon,
+  CalendarIcon, ChatIcon, CheckIcon, DocsIcon, GithubIcon,
+} from '@/components/icons';
 
-const MODELS = [
-  {
-    num: '01',
-    title: 'Quiz Difficulty Classifier',
-    desc: 'Classifies every generated question into easy / medium / hard using a trained NB model.',
-    icon: Target,
-  },
-  {
-    num: '02',
-    title: 'Topic Clustering & Extraction',
-    desc: 'Unsupervised clustering surfaces the core topics in any uploaded content.',
-    icon: Layers,
-  },
-  {
-    num: '03',
-    title: 'Text Summarizer',
-    desc: 'TF-IDF extraction condenses notes into concise revision bullets.',
-    icon: FileText,
-  },
-  {
-    num: '04',
-    title: 'Feedback Generator',
-    desc: 'Generates per-question feedback based on your answer pattern.',
-    icon: Brain,
-  },
-  {
-    num: '05',
-    title: 'Knowledge Tracing',
-    desc: 'BKT-inspired model tracks your learning curve across sessions.',
-    icon: TrendingUp,
-  },
-  {
-    num: '06',
-    title: 'Exam Score Predictor',
-    desc: 'Regression model predicts readiness from quiz history and consistency.',
-    icon: BarChart3,
-  },
-  {
-    num: '07',
-    title: 'Study Time Optimizer',
-    desc: 'Weighs your weak topics higher when allocating daily study time.',
-    icon: Zap,
-  },
-  {
-    num: '08',
-    title: 'Concept Difficulty Ranker',
-    desc: 'Ranks concepts by inherent difficulty to guide revision priority.',
-    icon: Target,
-  },
-  {
-    num: '09',
-    title: 'Resource Recommender',
-    desc: 'Suggests revision materials aligned to your weakest concept clusters.',
-    icon: BookOpen,
-  },
-  {
-    num: '10',
-    title: 'Evaluation Dashboard',
-    desc: 'Aggregates all model signals into a single readiness scorecard.',
-    icon: BarChart3,
-  },
+const features = [
+  { icon: BrainIcon,    title: 'AI Copilot',        desc: 'Ask anything about your study material. Context-aware answers drawn directly from your uploaded content.' },
+  { icon: FlashIcon,    title: 'Quiz Arena',         desc: 'Auto-generate multiple-choice quizzes from any material. Track scores and see weak areas highlighted instantly.' },
+  { icon: BookIcon,     title: 'Smart Flashcards',   desc: 'Spaced-repetition review queue powered by the SM-2 algorithm. Study smarter, not longer.' },
+  { icon: ChartIcon,    title: 'Analytics',          desc: 'Score trends, performance per topic, and an exam-readiness prediction built from your real quiz history.' },
+  { icon: CalendarIcon, title: 'Study Planner',      desc: 'Structured daily schedule generated from your target exam date and current performance.' },
+  { icon: ChatIcon,     title: 'Multi-Workspace',    desc: 'Separate everything by subject or course. Each workspace has its own material, quizzes, and progress.' },
 ];
 
-const INPUTS = [
-  { icon: FileText, label: 'Paste notes', sub: 'Any plain text' },
-  { icon: Upload,   label: 'Upload PDF',  sub: 'Documents, slides' },
-  { icon: Youtube,  label: 'YouTube URL', sub: 'Auto-transcribed' },
+const steps = [
+  { n: '01', label: 'Create a Workspace', desc: 'Group your study material by subject, course, or exam. Each workspace is fully isolated.' },
+  { n: '02', label: 'Upload Study Material', desc: 'Paste text, upload a PDF, or drop a YouTube link. The system extracts and indexes the content automatically.' },
+  { n: '03', label: 'Generate Quizzes or Flashcards', desc: 'One click generates a full quiz or flashcard deck from your material. Difficulty is calibrated to your history.' },
+  { n: '04', label: 'Review with AI Copilot', desc: 'Ask questions in plain English. The copilot answers using only your uploaded content — no hallucinations from outside.' },
+  { n: '05', label: 'Track Your Progress', desc: 'Analytics shows exactly where you are strong and where to focus. The planner builds your remaining schedule.' },
+];
+
+const techStack = [
+  'React', 'TypeScript', 'Vite', 'Flask', 'Python',
+  'Supabase', 'ChromaDB', 'Railway', 'Vercel', 'Tailwind CSS',
+];
+
+const stats = [
+  { value: '5x', label: 'Faster revision' },
+  { value: '100%', label: 'Context-grounded AI' },
+  { value: '0', label: 'External data sent' },
 ];
 
 export default function LandingPage() {
+  const navigate        = useNavigate();
+  const { theme, toggle } = useTheme();
+
   return (
-    <PageShell>
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <section className="page-wrap pt-16 pb-20">
-        <div className="max-w-2xl">
-          <div className="mb-5 flex flex-wrap items-center gap-2">
-            <span className="tag">v0.1 alpha</span>
-            <span className="tag">10 trained ML models</span>
-            <span className="tag">no external AI APIs</span>
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)]">
+
+      {/* ── Navbar ─────────────────────────────────────── */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-14"
+        style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border-color)' }}>
+        <div className="max-w-6xl mx-auto h-full px-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-[var(--text-primary)] flex items-center justify-center">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                  stroke="var(--bg)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <span className="font-syne font-bold text-[15px] tracking-tight">StudyPal</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('/docs')}
+              className="btn-ghost text-sm px-4 py-2">
+              <DocsIcon size={15} /> Docs
+            </button>
+            <button onClick={toggle}
+              className="p-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors">
+              <motion.div key={theme} initial={{ rotate: -20, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} transition={{ duration: 0.2 }}>
+                {theme === 'dark' ? <SunIcon size={17} /> : <MoonIcon size={17} />}
+              </motion.div>
+            </button>
+            <button onClick={() => navigate('/workspaces')} className="btn-primary text-sm">
+              Launch App <ArrowRightIcon size={15} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Hero ───────────────────────────────────────── */}
+      <section className="pt-36 pb-24 px-5 text-center max-w-4xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium mb-8"
+            style={{ border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+            <SparkleIcon size={12} />
+            AI-powered study companion — fully open source
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold text-ink leading-[1.12] tracking-tight mb-6 animate-fade-up">
-            Your notes,&nbsp;
-            <span className="relative inline-block">
-              <span className="relative z-10">turned into</span>
-              <span
-                className="absolute -bottom-1 left-0 w-full h-[6px] bg-ink/10 rounded"
-                aria-hidden
-              />
-            </span>
-            {' '}a study OS.
+          <h1 className="font-syne text-5xl md:text-7xl font-extrabold leading-[1.05] mb-5">
+            <BlurText text="Study smarter." className="justify-center text-[var(--text-primary)]" />
+            <ShinyText text="Learn faster." className="font-syne text-5xl md:text-7xl font-extrabold mt-1" />
           </h1>
 
-          <p className="text-sm sm:text-base text-ink-faint leading-relaxed max-w-xl mb-8 animate-fade-up animate-delay-100">
-            StudyForge transforms any PDF, note, or lecture into adaptive quizzes,
-            flashcards, revision plans, and a Jarvis-like copilot — all powered
-            entirely by your own ML models trained in Jupyter.
+          <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto mb-10 leading-relaxed">
+            Upload your study material, auto-generate quizzes and flashcards,
+            ask an AI that only uses your content, and track your progress — all in one focused workspace.
           </p>
 
-          <div className="flex flex-wrap gap-3 animate-fade-up animate-delay-200">
-            <Link to="/workspaces" className="btn-ink">
-              Open study OS
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <a
-              href="https://github.com/Devarajan-Maheshwaran/ai-study-pal"
-              target="_blank"
-              rel="noreferrer"
-              className="btn-outline"
-            >
-              <Github className="h-4 w-4" />
-              GitHub
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button onClick={() => navigate('/workspaces')} className="btn-primary px-8 py-3 text-base">
+              Start for free <ArrowRightIcon size={16} />
+            </button>
+            <a href="https://github.com/Devarajan-Maheshwaran/ai-study-pal"
+              target="_blank" rel="noopener noreferrer"
+              className="btn-ghost px-6 py-3 text-base">
+              <GithubIcon size={16} /> View on GitHub
             </a>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* ── Rule ────────────────────────────────────────────── */}
-      <div className="rule-x" />
-
-      {/* ── Input types ─────────────────────────────────────── */}
-      <section className="page-wrap py-14">
-        <p className="section-label mb-5">Works with any content</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {INPUTS.map(({ icon: Icon, label, sub }) => (
-            <div key={label} className="card-paper p-5 flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-forge-rule bg-paper text-ink-soft">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-ink">{label}</p>
-                <p className="text-xs text-ink-faint">{sub}</p>
-              </div>
-            </div>
+      {/* ── Stats ──────────────────────────────────────── */}
+      <section className="py-10 px-5 max-w-3xl mx-auto">
+        <div className="grid grid-cols-3 gap-4">
+          {stats.map((s, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }} viewport={{ once: true }}
+              className="text-center py-6 rounded-2xl"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+              <div className="font-syne text-3xl font-extrabold text-[var(--text-primary)] mb-1">{s.value}</div>
+              <div className="text-xs text-[var(--text-muted)] font-medium">{s.label}</div>
+            </motion.div>
           ))}
         </div>
       </section>
 
-      <div className="rule-x" />
-
-      {/* ── ML Models grid ──────────────────────────────────── */}
-      <section className="page-wrap py-14">
-        <p className="section-label mb-2">Intelligence layer</p>
-        <h2 className="text-2xl font-bold text-ink mb-2">10 trained ML models, zero cloud AI</h2>
-        <p className="text-sm text-ink-faint mb-8 max-w-xl">
-          Every insight — quiz difficulty, knowledge tracing, exam prediction, study planning —
-          runs on models trained in your own Jupyter notebooks.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {MODELS.map(({ num, title, desc, icon: Icon }) => (
-            <div key={num} className="card-paper p-5 group">
-              <div className="flex items-start justify-between mb-3">
-                <span className="font-mono text-[10px] text-ink-ghost">{num}</span>
-                <Icon className="h-4 w-4 text-ink-ghost group-hover:text-ink-soft transition-colors" />
-              </div>
-              <p className="text-sm font-semibold text-ink mb-1">{title}</p>
-              <p className="text-xs text-ink-faint leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
+      {/* ── Tech strip ─────────────────────────────────── */}
+      <section className="py-8 px-5">
+        <p className="label-section text-center mb-5">Built with</p>
+        <LogoLoop items={techStack} speed={32} />
       </section>
 
-      <div className="rule-x" />
-
-      {/* ── CTA ─────────────────────────────────────────────── */}
-      <section className="page-wrap py-16">
-        <div className="card-paper p-8 sm:p-12 text-center">
-          <p className="section-label mb-3">Ready to use</p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-ink mb-3">
-            Create your first study workspace.
+      {/* ── Features ───────────────────────────────────── */}
+      <section className="py-20 px-5 max-w-6xl mx-auto">
+        <div className="text-center mb-14">
+          <p className="label-section mb-3">Features</p>
+          <h2 className="font-syne text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-3">
+            Everything you need to ace any exam
           </h2>
-          <p className="text-sm text-ink-faint max-w-md mx-auto mb-7">
-            Upload notes, generate questions, track weaknesses, and plan revision —
-            all in one place. No sign-up required in alpha.
+          <p className="text-[var(--text-muted)] max-w-xl mx-auto">
+            Each tool is purpose-built for active recall, not passive reading.
           </p>
-          <Link to="/workspaces" className="btn-ink">
-            Open study OS
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          {features.map((f, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07, duration: 0.45 }} viewport={{ once: true }}>
+              <SpotlightCard className="p-6 h-full">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
+                  style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)' }}>
+                  <f.icon size={18} className="text-[var(--text-primary)]" />
+                </div>
+                <h3 className="font-syne font-semibold text-[var(--text-primary)] mb-2">{f.title}</h3>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{f.desc}</p>
+              </SpotlightCard>
+            </motion.div>
+          ))}
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────── */}
-      <footer className="rule-x">
-        <div className="page-wrap flex flex-wrap items-center justify-between gap-2 py-4 text-[11px] font-mono text-ink-ghost">
-          <span>StudyForge — AI study OS</span>
-          <span>React + Flask + 10 trained ML models · no external AI APIs</span>
+      {/* ── How it works ───────────────────────────────── */}
+      <section className="py-20 px-5 max-w-3xl mx-auto">
+        <div className="text-center mb-14">
+          <p className="label-section mb-3">How it works</p>
+          <h2 className="font-syne text-3xl font-bold text-[var(--text-primary)]">From upload to exam-ready in minutes</h2>
         </div>
+        <div className="space-y-4">
+          {steps.map((s, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -16 }} whileInView={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.07 }} viewport={{ once: true }}
+              className="flex gap-5 items-start p-5 rounded-2xl"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+              <span className="font-syne text-2xl font-black text-[var(--text-faint)] w-8 shrink-0 leading-none pt-0.5">{s.n}</span>
+              <div>
+                <p className="font-syne font-semibold text-[var(--text-primary)] mb-1">{s.label}</p>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{s.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA ────────────────────────────────────────── */}
+      <section className="py-24 px-5 text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <h2 className="font-syne text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-3">
+            Ready to study smarter?
+          </h2>
+          <p className="text-[var(--text-muted)] mb-8 max-w-md mx-auto">
+            No account required. Create your first workspace and start in under 30 seconds.
+          </p>
+          <button onClick={() => navigate('/workspaces')} className="btn-primary px-10 py-3.5 text-base">
+            Open StudyPal <ArrowRightIcon size={16} />
+          </button>
+        </motion.div>
+      </section>
+
+      {/* ── Footer ─────────────────────────────────────── */}
+      <footer className="py-8 px-5 text-center"
+        style={{ borderTop: '1px solid var(--border-color)' }}>
+        <div className="flex items-center justify-center gap-1.5 mb-2">
+          <div className="w-5 h-5 rounded-md bg-[var(--text-primary)] flex items-center justify-center">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="var(--bg)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span className="font-syne font-bold text-sm text-[var(--text-primary)]">StudyPal</span>
+        </div>
+        <p className="text-xs text-[var(--text-faint)]">
+          Open source — MIT licence
+        </p>
       </footer>
-    </PageShell>
+    </div>
   );
 }

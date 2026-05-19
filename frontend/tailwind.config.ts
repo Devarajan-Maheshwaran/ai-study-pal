@@ -9,69 +9,46 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans:  ["'Inter'", ...fontFamily.sans],
+        syne:  ["'Syne'",  ...fontFamily.sans],
+        mono:  ["'JetBrains Mono'", ...fontFamily.mono],
+      },
       colors: {
-        paper: {
-          DEFAULT: "#F5F0E8",
-          subtle: "#FBF8F3",
-          edge: "#EDE5D8",
-          dark: "#EDE3D5",
+        surface: {
+          DEFAULT:  "var(--bg)",
+          card:     "var(--bg-card)",
+          subtle:   "var(--bg-subtle)",
+          border:   "var(--border-color)",
         },
         ink: {
-          DEFAULT: "#1A1A1A",
-          soft: "#3A3A3A",
-          faint: "#888880",
-          ghost: "#BBBBAA",
+          DEFAULT: "var(--text-primary)",
+          muted:   "var(--text-muted)",
+          faint:   "var(--text-faint)",
         },
-        forge: {
-          black: "#111111",
-          white: "#FAFAF7",
-          rule: "#D8D0C4",
-          accent: "#2A2A2A",
-        },
-        status: {
-          green: "#16A34A",
-          amber: "#D97706",
-          red: "#DC2626",
-          blue: "#2563EB",
-        },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border:     "var(--border-color)",
+        background: "var(--bg)",
+        foreground: "var(--text-primary)",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT:    "var(--text-primary)",
+          foreground: "var(--bg)",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT:    "var(--bg-subtle)",
+          foreground: "var(--text-primary)",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT:    "var(--bg-subtle)",
+          foreground: "var(--text-muted)",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT:    "var(--bg-card)",
+          foreground: "var(--text-primary)",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT:    "#dc2626",
+          foreground: "#ffffff",
         },
-      },
-      fontFamily: {
-        sans: ["'IBM Plex Sans'", ...fontFamily.sans],
-        mono: ["'IBM Plex Mono'", ...fontFamily.mono],
-        serif: ["'IBM Plex Serif'", ...fontFamily.serif],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -79,66 +56,46 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        "paper-xs": "0 1px 0 0 rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
-        "paper-sm": "0 1px 3px 0 rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)",
-        "paper-md": "0 4px 8px -2px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)",
-        "paper-lg": "0 8px 20px -4px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05)",
-        "ink-focus": "0 0 0 3px rgba(26,26,26,0.15)",
-      },
-      backgroundImage: {
-        "ruled-lines":
-          "repeating-linear-gradient(transparent, transparent 23px, rgba(0,0,0,0.035) 23px, rgba(0,0,0,0.035) 24px)",
-        "dot-grid":
-          "radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px)",
-      },
-      backgroundSize: {
-        "dot-grid": "20px 20px",
+        sm:   "var(--shadow-sm)",
+        md:   "var(--shadow-md)",
+        lg:   "var(--shadow-lg)",
+        card: "var(--shadow-card)",
       },
       keyframes: {
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "0%":   { opacity: "0", transform: "translateY(12px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "fade-in": {
-          "0%": { opacity: "0" },
+          "0%":   { opacity: "0" },
           "100%": { opacity: "1" },
         },
-        "slide-right": {
-          "0%": { transform: "translateX(-8px)", opacity: "0" },
-          "100%": { transform: "translateX(0)", opacity: "1" },
-        },
-        "scale-in": {
-          "0%": { transform: "scale(0.96)", opacity: "0" },
-          "100%": { transform: "scale(1)", opacity: "1" },
-        },
-        "blink": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0" },
-        },
         "shimmer": {
-          "0%": { backgroundPosition: "-200% 0" },
+          "0%":   { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
+        },
+        "logo-scroll": {
+          "0%":   { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
         },
         "accordion-down": {
           from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
+          to:   { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
+          to:   { height: "0" },
         },
       },
       animation: {
-        "fade-up": "fade-up 0.4s ease-out forwards",
-        "fade-in": "fade-in 0.3s ease-out forwards",
-        "slide-right": "slide-right 0.3s ease-out forwards",
-        "scale-in": "scale-in 0.25s ease-out forwards",
-        "blink": "blink 1.1s step-end infinite",
-        "shimmer": "shimmer 2s linear infinite",
+        "fade-up":        "fade-up 0.45s ease-out forwards",
+        "fade-in":        "fade-in 0.3s ease-out forwards",
+        "shimmer":        "shimmer 2.4s linear infinite",
+        "logo-scroll":    "logo-scroll 28s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-up":   "accordion-up 0.2s ease-out",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;

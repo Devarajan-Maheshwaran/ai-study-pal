@@ -1,154 +1,138 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Serif:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* ── Light theme (default) ──────────────────────────── */
   :root {
-    --background: 40 28% 96%;
-    --foreground: 0 0% 10%;
-    --card: 40 24% 97%;
-    --card-foreground: 0 0% 10%;
-    --popover: 40 24% 97%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 0 0% 10%;
-    --primary-foreground: 40 28% 96%;
-    --secondary: 40 18% 92%;
-    --secondary-foreground: 0 0% 20%;
-    --muted: 40 14% 91%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 40 14% 91%;
-    --accent-foreground: 0 0% 10%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 38 18% 84%;
-    --input: 38 18% 84%;
-    --ring: 0 0% 15%;
-    --radius: 0.5rem;
+    --bg:           #ffffff;
+    --bg-card:      #f7f7f7;
+    --bg-subtle:    #efefef;
+    --bg-hover:     #e8e8e8;
+    --border-color: rgba(0, 0, 0, 0.09);
+    --text-primary: #0a0a0a;
+    --text-muted:   #5a5a5a;
+    --text-faint:   #9a9a9a;
+    --shadow-sm:    0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
+    --shadow-md:    0 4px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+    --shadow-lg:    0 12px 28px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.05);
+    --shadow-card:  0 2px 6px rgba(0,0,0,0.07);
+    --radius:       0.6rem;
+    --sidebar-w:    240px;
+  }
+
+  /* ── Dark theme ─────────────────────────────────────── */
+  .dark {
+    --bg:           #0a0a0a;
+    --bg-card:      #141414;
+    --bg-subtle:    #1e1e1e;
+    --bg-hover:     #252525;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --text-primary: #f0f0f0;
+    --text-muted:   #888888;
+    --text-faint:   #555555;
+    --shadow-sm:    0 1px 2px rgba(0,0,0,0.4),  0 0 0 1px rgba(255,255,255,0.04);
+    --shadow-md:    0 4px 10px rgba(0,0,0,0.5),  0 0 0 1px rgba(255,255,255,0.04);
+    --shadow-lg:    0 12px 28px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    --shadow-card:  0 2px 6px rgba(0,0,0,0.5);
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-    box-sizing: border-box;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
 
   html, body, #root {
     height: 100%;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-paper text-ink font-sans antialiased;
-    background-image: repeating-linear-gradient(
-      transparent,
-      transparent 23px,
-      rgba(0,0,0,0.028) 23px,
-      rgba(0,0,0,0.028) 24px
-    );
-    background-attachment: local;
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s ease, color 0.2s ease;
   }
 
-  h1, h2, h3 {
-    @apply font-sans tracking-tight;
+  h1, h2, h3, h4 {
+    font-family: 'Syne', sans-serif;
+    letter-spacing: -0.02em;
   }
 
-  code, kbd, pre, .mono {
-    @apply font-mono;
-  }
-
-  /* Custom scrollbar */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: #C8BEB0 transparent;
-  }
+  /* Scrollbar */
+  * { scrollbar-width: thin; scrollbar-color: var(--bg-subtle) transparent; }
   *::-webkit-scrollbar { width: 5px; height: 5px; }
   *::-webkit-scrollbar-thumb {
-    background-color: #C8BEB0;
+    background-color: var(--bg-subtle);
     border-radius: 999px;
   }
 }
 
 @layer components {
-  /* ── Paper card ────────────────────────────── */
-  .card-paper {
-    @apply bg-paper-subtle border border-forge-rule rounded-lg shadow-paper-sm;
+  /* Glass card */
+  .glass {
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border-color);
+  }
+  .dark .glass {
+    background: rgba(255,255,255,0.04);
   }
 
-  .card-paper-interactive {
-    @apply card-paper transition-all duration-150
-      hover:shadow-paper-md hover:-translate-y-[1px]
-      active:translate-y-0 active:shadow-paper-xs
-      cursor-pointer;
-  }
-
-  /* ── Page container ────────────────────────── */
-  .page-wrap {
-    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
-  }
-
-  /* ── Nav dividers ──────────────────────────── */
-  .rule-x {
-    @apply border-b border-forge-rule;
-  }
-  .rule-y {
-    @apply border-r border-forge-rule;
-  }
-
-  /* ── Tag / Chip ────────────────────────────── */
-  .tag {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5
-      text-[11px] font-mono font-medium tracking-wide
-      border border-forge-rule bg-paper text-ink-soft;
-  }
-  .tag-solid {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5
-      text-[11px] font-mono font-medium tracking-wide
-      bg-ink text-paper;
-  }
-
-  /* ── Button variants ───────────────────────── */
-  .btn-ink {
+  /* Primary filled button */
+  .btn-primary {
     @apply inline-flex items-center justify-center gap-2
-      rounded-full bg-ink text-paper
-      px-5 py-2 text-sm font-medium
-      shadow-paper-sm
-      transition-all duration-150
-      hover:shadow-paper-md hover:-translate-y-[1px]
-      active:translate-y-0 focus:outline-none focus:ring-2
-      focus:ring-ink/20;
+      rounded-full bg-[var(--text-primary)] text-[var(--bg)]
+      px-6 py-2.5 text-sm font-semibold
+      transition-all duration-200
+      hover:opacity-80 active:scale-[0.98]
+      focus:outline-none focus:ring-2 focus:ring-[var(--text-primary)]/20;
   }
-  .btn-outline {
+
+  /* Ghost / outline button */
+  .btn-ghost {
     @apply inline-flex items-center justify-center gap-2
-      rounded-full border border-forge-rule bg-paper-subtle text-ink-soft
-      px-4 py-2 text-sm font-medium
-      transition-all duration-150
-      hover:bg-paper hover:text-ink
-      focus:outline-none focus:ring-2 focus:ring-ink/10;
+      rounded-full border border-[var(--border-color)]
+      bg-[var(--bg-card)] text-[var(--text-muted)]
+      px-5 py-2.5 text-sm font-medium
+      transition-all duration-200
+      hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]
+      focus:outline-none focus:ring-2 focus:ring-[var(--border-color)];
   }
 
-  /* ── Status dots ───────────────────────────── */
-  .dot-green { @apply h-1.5 w-1.5 rounded-full bg-status-green; }
-  .dot-amber { @apply h-1.5 w-1.5 rounded-full bg-status-amber; }
-  .dot-red   { @apply h-1.5 w-1.5 rounded-full bg-status-red; }
+  /* Section label */
+  .label-section {
+    @apply text-[11px] font-mono uppercase tracking-[0.14em] text-[var(--text-faint)];
+  }
 
-  /* ── Shimmer loading skeleton ──────────────── */
+  /* Skeleton shimmer */
   .skeleton {
-    @apply rounded bg-gradient-to-r from-paper-edge via-paper-subtle to-paper-edge
-      bg-[length:200%_100%] animate-shimmer;
+    background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-subtle) 50%, var(--bg-card) 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded;
   }
 
-  /* ── Section label (above heading) ────────── */
-  .section-label {
-    @apply text-[11px] font-mono uppercase tracking-[0.12em] text-ink-faint;
+  /* Spotlight card base */
+  .spotlight-card {
+    @apply relative rounded-2xl border border-[var(--border-color)]
+      bg-[var(--bg-card)] overflow-hidden
+      transition-colors duration-200
+      hover:border-[rgba(0,0,0,0.16)];
+  }
+  .dark .spotlight-card {
+    @apply hover:border-[rgba(255,255,255,0.14)];
   }
 }
 
 @layer utilities {
-  .animate-delay-100 { animation-delay: 100ms; }
-  .animate-delay-200 { animation-delay: 200ms; }
-  .animate-delay-300 { animation-delay: 300ms; }
-  .animate-delay-400 { animation-delay: 400ms; }
-  .animate-delay-500 { animation-delay: 500ms; }
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .font-syne { font-family: 'Syne', sans-serif; }
 }
